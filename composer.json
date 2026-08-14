@@ -1,0 +1,53 @@
+{
+    "name": "avadim/manticore-laravel-scout",
+    "description": "ManticoreSearch driver for Laravel Scout",
+    "keywords": [
+        "laravel",
+        "scout",
+        "manticoresoftware",
+        "manticoresearch",
+        "manticore",
+        "search",
+        "fulltext",
+        "engine",
+        "driver"
+    ],
+    "type": "library",
+    "homepage": "https://github.com/aVadim483/manticore-laravel-scout",
+    "require": {
+        "php": "^7.4|^8.1",
+        "ext-json": "*",
+        "avadim/manticore-query-builder-laravel": "dev-main",
+        "laravel/scout": "^9.0|^10.0|^11.0",
+        "illuminate/support": "^8.0|^9.0|^10.0|^11.0|^12.0|^13.0",
+        "illuminate/contracts": "^8.0|^9.0|^10.0|^11.0|^12.0|^13.0",
+        "illuminate/database": "^8.0|^9.0|^10.0|^11.0|^12.0|^13.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^6.0|^7.0|^8.0|^9.0|^10.0|^11.0",
+        "phpunit/phpunit": "^9.0|^10.0|^11.0|^12.0"
+    },
+    "license": "MIT",
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "autoload": {
+        "psr-4": {
+            "avadim\\Manticore\\Scout\\": "./src/Manticore/Scout"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "avadim\\Manticore\\Scout\\Tests\\": "./tests"
+        }
+    },
+    "scripts": {
+        "test": "phpunit"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "avadim\\Manticore\\Scout\\ServiceProvider"
+            ]
+        }
+    }
+}
