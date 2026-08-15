@@ -52,7 +52,7 @@ composer require avadim/manticore-laravel-scout
 * PHP >= 7.4
 * Laravel 8 — 13 (или Lumen того же поколения), Laravel Scout 9 — 11
 * ManticoreSearch с открытым протоколом MySQL (по умолчанию порт 9306)
-* [`avadim/manticore-query-builder-laravel`](https://github.com/aVadim483/manticore-query-builder-laravel) >= 2.0
+* [`avadim/manticore-query-builder-laravel`](https://github.com/aVadim483/manticore-query-builder-laravel) >= 2.1
 
 ## Установка
 

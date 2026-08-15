@@ -52,7 +52,7 @@ translates what Scout asks for into a query of the builder and maps the answer b
 * PHP >= 7.4
 * Laravel 8 - 13 (or Lumen of the same generation), Laravel Scout 9 - 11
 * ManticoreSearch with the MySQL protocol open (port 9306 by default)
-* [`avadim/manticore-query-builder-laravel`](https://github.com/aVadim483/manticore-query-builder-laravel) >= 2.0
+* [`avadim/manticore-query-builder-laravel`](https://github.com/aVadim483/manticore-query-builder-laravel) >= 2.1
 
 ## Installation
 

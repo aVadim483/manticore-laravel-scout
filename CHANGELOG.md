@@ -4,6 +4,17 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-08-15
+
+### Changed
+
+* Requires `avadim/manticore-query-builder-laravel` 2.1, and through it the query builder 2.1,
+  where the `CALL *` statements became methods — `callSuggest()`, `callQsuggest()`,
+  `callKeywords()`, `callSnippets()` and `callPq()`. The driver does not use them itself; the
+  minimum is raised so that an application installing it into a project that already holds the
+  2.0 wrapper gets them rather than an "undefined method" of
+  `\ManticoreDb::table('?posts')->callSuggest(...)`.
+
 ## [2.0.0] - 2026-08-15
 
 The first release. It starts at 2.0.0 rather than at 1.0.0 so that the three packages of the
@@ -45,4 +56,5 @@ and, through it, on `manticore-query-builder-php` 2.0.
   wider (PHP 7.4+, Laravel 8 - 13, Scout 9 - 11) and rests on the constraints of the packages
   themselves, not on a run of the test suite.
 
+[2.1.0]: https://github.com/aVadim483/manticore-laravel-scout/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/aVadim483/manticore-laravel-scout/releases/tag/v2.0.0
