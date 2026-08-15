@@ -4,7 +4,11 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.0.0] - 2026-08-15
+
+The first release. It starts at 2.0.0 rather than at 1.0.0 so that the three packages of the
+family carry the same major number: this driver stands on `manticore-query-builder-laravel` 2.0
+and, through it, on `manticore-query-builder-php` 2.0.
 
 ### Added
 
@@ -40,3 +44,5 @@ All notable changes to this project are documented here. The format is based on
 - Tested against Laravel 13, Scout 11 and ManticoreSearch 28 on PHP 8.4. The declared range is
   wider (PHP 7.4+, Laravel 8 - 13, Scout 9 - 11) and rests on the constraints of the packages
   themselves, not on a run of the test suite.
+
+[2.0.0]: https://github.com/aVadim483/manticore-laravel-scout/releases/tag/v2.0.0

@@ -1,5 +1,8 @@
 **English** | [Русский](README.ru.md)
 
+[![GitHub Release](https://img.shields.io/github/v/release/aVadim483/manticore-laravel-scout)](https://packagist.org/packages/avadim/manticore-laravel-scout)
+[![Packagist Downloads](https://img.shields.io/packagist/dt/avadim/manticore-laravel-scout?color=%23aa00aa)](https://packagist.org/packages/avadim/manticore-laravel-scout)
+[![GitHub License](https://img.shields.io/github/license/aVadim483/manticore-laravel-scout)](https://packagist.org/packages/avadim/manticore-laravel-scout)
 [![Static Badge](https://img.shields.io/badge/php-%3E%3D7.4-005fc7)](https://packagist.org/packages/avadim/manticore-laravel-scout)
 [![Static Badge](https://img.shields.io/badge/laravel-8%20--%2013-ff2d20)](https://packagist.org/packages/avadim/manticore-laravel-scout)
 [![Static Badge](https://img.shields.io/badge/scout-9%20--%2011-ff2d20)](https://packagist.org/packages/avadim/manticore-laravel-scout)
