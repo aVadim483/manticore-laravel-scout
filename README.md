@@ -23,6 +23,7 @@ translates what Scout asks for into a query of the builder and maps the answer b
 
 ## Contents
 
+* [Related packages](#related-packages)
 * [Requirements](#requirements)
 * [Installation](#installation)
 * [Configuration](#configuration)
@@ -35,6 +36,16 @@ translates what Scout asks for into a query of the builder and maps the answer b
 * [Artisan commands](#artisan-commands)
 * [Limits worth knowing](#limits-worth-knowing)
 * [Tests](#tests)
+
+## Related packages
+
+* [`avadim/manticore-query-builder-laravel`](https://github.com/aVadim483/manticore-query-builder-laravel) —
+  the Laravel integration this driver stands on, and where its connection comes from:
+  `config/manticore.php`, named connections, the `\ManticoreDb` alias and the facade. Reach for it
+  whenever a query needs more than the API of Scout gives.
+* [`avadim/manticore-query-builder-php`](https://github.com/aVadim483/manticore-query-builder-php) —
+  the query builder itself, with no dependency on Laravel: the syntax of a query and the schema
+  DSL live there, and so does everything this driver translates a search into.
 
 ## Requirements
 

@@ -23,6 +23,7 @@ composer require avadim/manticore-laravel-scout
 
 ## Содержание
 
+* [Смежные пакеты](#смежные-пакеты)
 * [Требования](#требования)
 * [Установка](#установка)
 * [Конфигурация](#конфигурация)
@@ -35,6 +36,16 @@ composer require avadim/manticore-laravel-scout
 * [Команды artisan](#команды-artisan)
 * [Ограничения, о которых стоит знать](#ограничения-о-которых-стоит-знать)
 * [Тесты](#тесты)
+
+## Смежные пакеты
+
+* [`avadim/manticore-query-builder-laravel`](https://github.com/aVadim483/manticore-query-builder-laravel) —
+  интеграция с Laravel, на которой стоит драйвер и откуда он берёт соединение:
+  `config/manticore.php`, именованные соединения, алиас `\ManticoreDb` и фасад. Нужен всякий раз,
+  когда запросу мало возможностей API Scout.
+* [`avadim/manticore-query-builder-php`](https://github.com/aVadim483/manticore-query-builder-php) —
+  сам построитель запросов, без зависимостей от Laravel: синтаксис запроса и DSL схемы живут там,
+  как и всё, во что драйвер переводит поиск.
 
 ## Требования
 
