@@ -35,8 +35,8 @@ All notable changes to this project are documented here. The format is based on
 
 ### Notes
 
-- The package requires `avadim/manticore-query-builder-laravel` as `dev-main` until its next
-  release; the constraint is to be replaced with the released version before this one is tagged.
+- The package requires `avadim/manticore-query-builder-laravel` 2.0, where reads answer with a
+  `Collection` of `Row` objects and a rejected read throws instead of answering with `null`.
 - Tested against Laravel 13, Scout 11 and ManticoreSearch 28 on PHP 8.4. The declared range is
   wider (PHP 7.4+, Laravel 8 - 13, Scout 9 - 11) and rests on the constraints of the packages
   themselves, not on a run of the test suite.

@@ -17,7 +17,7 @@
     "require": {
         "php": "^7.4|^8.1",
         "ext-json": "*",
-        "avadim/manticore-query-builder-laravel": "dev-main",
+        "avadim/manticore-query-builder-laravel": "^2.0",
         "laravel/scout": "^9.0|^10.0|^11.0",
         "illuminate/support": "^8.0|^9.0|^10.0|^11.0|^12.0|^13.0",
         "illuminate/contracts": "^8.0|^9.0|^10.0|^11.0|^12.0|^13.0",
@@ -28,8 +28,6 @@
         "phpunit/phpunit": "^9.0|^10.0|^11.0|^12.0"
     },
     "license": "MIT",
-    "minimum-stability": "dev",
-    "prefer-stable": true,
     "autoload": {
         "psr-4": {
             "avadim\\Manticore\\Scout\\": "./src/Manticore/Scout"
