@@ -4,7 +4,21 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [3.0.0] - 2026-09-04
+
+The release that says what it runs on instead of asserting it, and gives Scout the two things
+Manticore is picked for. The floor moves to Laravel 11, PHP 8.2 and Scout 11 — the wrapper this
+driver stands on narrowed its own range, and of the three Scout majors the driver claimed, only
+the last one ever worked. `->semantic()` and `->hybrid()` of a search are answered by the server
+now, in one statement rather than two and a merge. An index is brought in line with its schema by
+a command of the framework. And the CI runs the suite against every Laravel of the range and three
+versions of the server, which is where two of the fixes below came from.
+
+**The majors of the family are no longer in step.** 2.0.0 started where it did so that the three
+packages carried one number; since then `manticore-query-builder-laravel` went to 3.0 while
+`manticore-query-builder-php` stayed on its own line (2.4 as this is released). The major of the
+driver follows the wrapper it stands on — the package it is a layer over — and the query builder
+underneath keeps its own.
 
 ### Breaking
 
@@ -89,6 +103,12 @@ All notable changes to this project are documented here. The format is based on
 * The readme says what the engine does with a call it does not know: it hands it to the connection
   of the query builder, which is how the transactions, `tableDescribe()` and the meta of the search
   that has just run — `lastResultSet()->facets()` — are reached through it.
+
+* A search of an index that is not there answers with `ResultSet::empty()` of the query builder,
+  where the driver used to write out the array a `ResultSet` is built from — the shape of that
+  class rather than of its API. `avadim/manticore-query-builder-php ^2.4`, where the two factories
+  come from, is required directly for it: the driver calls it now, rather than only reaching it
+  through the wrapper.
 
 ### Fixed
 
@@ -185,6 +205,6 @@ and, through it, on `manticore-query-builder-php` 2.0.
   wider (PHP 7.4+, Laravel 8 - 13, Scout 9 - 11) and rests on the constraints of the packages
   themselves, not on a run of the test suite.
 
-[Unreleased]: https://github.com/aVadim483/manticore-laravel-scout/compare/v2.1.0...HEAD
+[3.0.0]: https://github.com/aVadim483/manticore-laravel-scout/compare/v2.1.0...v3.0.0
 [2.1.0]: https://github.com/aVadim483/manticore-laravel-scout/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/aVadim483/manticore-laravel-scout/releases/tag/v2.0.0

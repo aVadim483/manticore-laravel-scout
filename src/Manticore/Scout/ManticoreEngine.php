@@ -1253,24 +1253,7 @@ class ManticoreEngine extends Engine implements UpdatesIndexSettings, SupportsSe
      */
     protected function emptyResult(): ResultSet
     {
-        return $this->resultSet([]);
-    }
-
-    /**
-     * A ResultSet of the given rows - the one place that knows how one is put together.
-     *
-     * @param array $rows
-     * @param array $meta
-     *
-     * @return ResultSet
-     */
-    protected function resultSet(array $rows, array $meta = []): ResultSet
-    {
-        return new ResultSet([
-            'command' => 'SELECT',
-            'meta'    => $meta + ['total' => count($rows), 'total_found' => count($rows)],
-            'result'  => ['type' => 'array', 'data' => $rows],
-        ]);
+        return ResultSet::empty();
     }
 
     /**
