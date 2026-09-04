@@ -196,25 +196,38 @@ abstract class TestCase extends BaseTestCase
     }
 
     /**
-     * The version the server names itself by
+     * What the server names itself by: the version, and the libraries it loaded
      *
      * @return string
      */
-    protected function serverVersion(): string
+    protected function serverBanner(): string
     {
         if (null === self::$serverVersion) {
-            // "28.6.6 e5feb9932@26073104 (columnar 13.8.3 ...)" - the version is what it starts with
+            // "28.6.6 e5feb9932@26073104 (columnar 13.8.3 ...) (secondary ...) (knn 13.8.3 ...)"
             $rows = ManticoreDb::connection(static::CONNECTION)->select("SHOW STATUS LIKE 'version'");
-            $value = (string)($rows[0]['Value'] ?? '');
 
-            self::$serverVersion = preg_match('/^\d+(\.\d+)*/', $value, $m) ? $m[0] : '0';
+            self::$serverVersion = (string)($rows[0]['Value'] ?? '');
         }
 
         return self::$serverVersion;
     }
 
     /**
-     * Skip the test when the server is older than the vector search of Manticore.
+     * The version the server names itself by
+     *
+     * @return string
+     */
+    protected function serverVersion(): string
+    {
+        return preg_match('/^\d+(\.\d+)*/', $this->serverBanner(), $m) ? $m[0] : '0';
+    }
+
+    /**
+     * Skip the test when the server cannot hold a vector.
+     *
+     * The version is not the whole of it: the KNN of Manticore lives in a library of its own, and
+     * a build without it parses a float_vector column and then answers "knn library not loaded".
+     * The banner of the server names what it did load.
      *
      * @return void
      */
@@ -222,11 +235,12 @@ abstract class TestCase extends BaseTestCase
     {
         $this->requiresServer();
 
-        if (version_compare($this->serverVersion(), static::VECTOR_SEARCH_SINCE, '<')) {
+        if (!preg_match('/\(knn\s/i', $this->serverBanner())) {
             $this->markTestSkipped(sprintf(
-                'A float_vector column and knn() are of ManticoreSearch %s and above, and the server is %s.',
+                'A float_vector column and knn() need the KNN library of ManticoreSearch %s and above, '
+                . 'and the server does not report one: %s',
                 static::VECTOR_SEARCH_SINCE,
-                $this->serverVersion()
+                $this->serverBanner() ?: 'no version'
             ));
         }
     }
