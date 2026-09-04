@@ -6,6 +6,7 @@
 [![Static Badge](https://img.shields.io/badge/php-%3E%3D8.2-005fc7)](https://packagist.org/packages/avadim/manticore-laravel-scout)
 [![Static Badge](https://img.shields.io/badge/laravel-11%20--%2013-ff2d20)](https://packagist.org/packages/avadim/manticore-laravel-scout)
 [![Static Badge](https://img.shields.io/badge/scout-11-ff2d20)](https://packagist.org/packages/avadim/manticore-laravel-scout)
+[![tests](https://github.com/aVadim483/manticore-laravel-scout/actions/workflows/tests.yml/badge.svg)](https://github.com/aVadim483/manticore-laravel-scout/actions/workflows/tests.yml)
 
 # ManticoreSearch driver for Laravel Scout
 
