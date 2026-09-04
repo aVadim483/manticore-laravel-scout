@@ -39,7 +39,10 @@ class ServiceProvider extends BaseServiceProvider
     public function boot(): void
     {
         if ($this->app instanceof LaravelApplication) {
-            $this->publishes([$this->configSource() => config_path('manticore-scout.php')], 'config');
+            // the dot of the name is what makes the published file land in scout.manticore: the
+            // config loader of Laravel takes the key of a file from its name and sets it with the
+            // dot notation, so config/scout.manticore.php is the "manticore" section of scout
+            $this->publishes([$this->configSource() => config_path('scout.manticore.php')], 'config');
         }
 
         $this->app->make(EngineManager::class)->extend('manticore', function ($app) {
@@ -58,6 +61,6 @@ class ServiceProvider extends BaseServiceProvider
      */
     protected function configSource(): string
     {
-        return __DIR__ . '/../../../config/manticore-scout.php';
+        return __DIR__ . '/../../../config/scout.manticore.php';
     }
 }

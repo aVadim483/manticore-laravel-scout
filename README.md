@@ -68,6 +68,12 @@ php artisan vendor:publish --provider="avadim\Manticore\Laravel\ServiceProvider"
 php artisan vendor:publish --provider="avadim\Manticore\Scout\ServiceProvider" --tag=config
 ```
 
+The second command writes `config/scout.manticore.php`, and the dot of that name is not a typo:
+the config loader of Laravel takes the key of a file from its name and sets it with the dot
+notation, so the file is read as the `manticore` section of `config/scout.php` rather than as a
+config of its own. Publishing it is optional - the same keys can be written into `config/scout.php`
+by hand, and what is written wins over the defaults of the package either way.
+
 In Lumen, register the providers in `bootstrap/app.php` and copy the config files by hand.
 
 ## Configuration
@@ -91,8 +97,10 @@ SCOUT_DRIVER=manticore
 SCOUT_QUEUE=true
 ```
 
-Everything the driver reads lives in the `manticore` section of `config/scout.php`. Its defaults are
-merged in by the service provider, so only the keys you change have to be written down:
+Everything the driver reads lives in the `manticore` section of `config/scout.php` - written there
+by hand, or published as `config/scout.manticore.php`, which Laravel reads into the same section.
+The defaults are merged in by the service provider, so only the keys you change have to be written
+down:
 
 | Key | Env | Default | Meaning |
 |---|---|---|---|

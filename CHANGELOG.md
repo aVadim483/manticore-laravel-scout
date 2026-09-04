@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+* A published config is read at last. It went to `config/manticore-scout.php`, which Laravel loads
+  under a key of its own (`manticore-scout`), while the driver reads `scout.manticore` — so a
+  published file was dead weight and every key edited in it was quietly ignored. It is published as
+  `config/scout.manticore.php` now: the config loader takes the key of a file from its name and
+  sets it with the dot notation, so the file lands in the `manticore` section of `scout` as it was
+  meant to. A `config/manticore-scout.php` published earlier can be renamed to
+  `config/scout.manticore.php` — its values start being read once it is.
+
 ## [2.1.0] - 2026-08-15
 
 ### Changed
@@ -56,5 +68,6 @@ and, through it, on `manticore-query-builder-php` 2.0.
   wider (PHP 7.4+, Laravel 8 - 13, Scout 9 - 11) and rests on the constraints of the packages
   themselves, not on a run of the test suite.
 
+[Unreleased]: https://github.com/aVadim483/manticore-laravel-scout/compare/v2.1.0...HEAD
 [2.1.0]: https://github.com/aVadim483/manticore-laravel-scout/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/aVadim483/manticore-laravel-scout/releases/tag/v2.0.0

@@ -4,7 +4,11 @@
  * Defaults of the "manticore" section of config/scout.php
  *
  * The file is merged into scout.manticore by the service provider, so an application only has to
- * write down the keys it wants to change - either in config/scout.php or by publishing this stub.
+ * write down the keys it wants to change - either as a "manticore" section of config/scout.php or
+ * by publishing this file, which lands as config/scout.manticore.php. The dot of that name is what
+ * makes it work: the config loader of Laravel takes the key of a file from its name and sets it
+ * with the dot notation, so the file is read as the "manticore" section of scout rather than as a
+ * config of its own. What is published wins over the defaults here, key by key.
  */
 return [
 

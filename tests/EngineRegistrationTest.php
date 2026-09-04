@@ -6,7 +6,10 @@ namespace avadim\Manticore\Scout\Tests;
 
 use avadim\Manticore\Laravel\Manager;
 use avadim\Manticore\Scout\ManticoreEngine;
+use avadim\Manticore\Scout\ServiceProvider as ScoutManticoreServiceProvider;
 use avadim\Manticore\Scout\Tests\Support\Post;
+use Illuminate\Config\Repository;
+use Illuminate\Support\ServiceProvider;
 use Laravel\Scout\EngineManager;
 
 /**
@@ -49,5 +52,38 @@ class EngineRegistrationTest extends TestCase
         $this->app->make(EngineManager::class)->engine('manticore');
 
         $this->assertSame([], $this->app->make(Manager::class)->getConnections());
+    }
+
+    public function testTheConfigIsPublishedUnderTheNameOfTheSectionItIsReadFrom(): void
+    {
+        $paths = ServiceProvider::pathsToPublish(ScoutManticoreServiceProvider::class, 'config');
+
+        $this->assertCount(1, $paths);
+        $this->assertSame('scout.manticore.php', basename(reset($paths)));
+    }
+
+    public function testAPublishedConfigLandsInTheScoutSectionRatherThanBesideIt(): void
+    {
+        $paths = ServiceProvider::pathsToPublish(ScoutManticoreServiceProvider::class, 'config');
+        $source = (string)array_key_first($paths);
+        $key = basename((string)reset($paths), '.php');
+
+        // the config loader of Laravel takes the key of a file from its name and sets it with the
+        // dot notation, which is the whole reason the file is named with a dot in it
+        $config = new Repository(['scout' => ['driver' => 'manticore', 'manticore' => []]]);
+        $config->set($key, require $source);
+
+        $this->assertSame(1000, (int)$config->get('scout.manticore.limit'));
+        $this->assertSame('manticore', $config->get('scout.driver'));
+    }
+
+    public function testTheSectionOfTheFileIsLoadedAfterTheFileOfScoutItself(): void
+    {
+        // the loader sorts the files naturally and writes them in that order, so "scout" has to
+        // come first - the other way round it would overwrite the section with itself
+        $files = ['scout.manticore' => 'scout.manticore.php', 'scout' => 'scout.php'];
+        ksort($files, SORT_NATURAL);
+
+        $this->assertSame(['scout', 'scout.manticore'], array_keys($files));
     }
 }
