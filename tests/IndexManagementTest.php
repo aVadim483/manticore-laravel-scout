@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace avadim\Manticore\Scout\Tests;
 
-use avadim\Manticore\QueryBuilder\QueryErrorException;
 use avadim\Manticore\Scout\Tests\Support\Post;
 use avadim\Manticore\Scout\Tests\Support\SchemaPost;
 
@@ -124,13 +123,34 @@ class IndexManagementTest extends TestCase
 
     public function testWithoutAutoCreateAWriteToAMissingIndexFails(): void
     {
-        Post::$searchableAs = $this->indexName('no_auto_create');
+        $index = $this->indexName('no_auto_create');
+        Post::$searchableAs = $index;
         $post = new Post(['title' => 'manticore', 'body' => '', 'author_id' => 1]);
         $post->id = 1;
 
-        $this->expectException(QueryErrorException::class);
+        // the driver stops before the write: a server of version 29 and up would create the table
+        // out of a schema of its own guessing, which is what auto_create is turned off to prevent
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('auto_create is off');
 
         $this->engine(['auto_create' => false])->update($post->newCollection([$post]));
+    }
+
+    public function testWithoutAutoCreateNothingIsCreatedBehindTheApplication(): void
+    {
+        $index = $this->indexName('no_auto_create');
+        Post::$searchableAs = $index;
+        $post = new Post(['title' => 'manticore', 'body' => '', 'author_id' => 1]);
+        $post->id = 1;
+
+        try {
+            $this->engine(['auto_create' => false])->update($post->newCollection([$post]));
+        }
+        catch (\LogicException $e) {
+            // the point of the test is the table, not the exception
+        }
+
+        $this->assertFalse($this->app->make('manticore')->hasTable($index));
     }
 
     public function testDeleteAllIndexesDropsWhatCarriesThePrefixOfScout(): void

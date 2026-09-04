@@ -1076,12 +1076,24 @@ class ManticoreEngine extends Engine implements UpdatesIndexSettings, SupportsSe
      */
     protected function ensureIndex(string $index, $model, array $rows)
     {
-        if (isset($this->knownIndexes[$index]) || !$this->config('auto_create', true)) {
+        if (isset($this->knownIndexes[$index])) {
             return;
         }
 
         $connection = $this->connection();
         if (!$connection->hasTable($index)) {
+            if (!$this->config('auto_create', true)) {
+                // handing the write to the server anyway is no answer: Manticore creates the table
+                // itself from version 29 on, out of a schema guessed from the row - which is the
+                // one thing auto_create is turned off to prevent. Up to 28 the same write came
+                // back as "table absent", so this is what that was, whatever the server does now
+                throw new \LogicException(
+                    'The index "' . $index . '" is not there, and scout.manticore.auto_create is off. '
+                    . 'Create it - "php artisan scout:index ' . $index . '" out of a schema of the '
+                    . 'config, or by hand - or turn auto_create on and let the driver create it.'
+                );
+            }
+
             $schema = $this->schemaOf($index);
             $columns = $schema['columns'] ?: $this->modelSchema($model) ?: $this->guessColumns($rows);
 
@@ -1201,11 +1213,12 @@ class ManticoreEngine extends Engine implements UpdatesIndexSettings, SupportsSe
             return false;
         }
 
-        // the server words it differently per statement: "table 'x' absent" of a write, "unknown
-        // local table(s) 'x' in search request" of a search, "no such table" of DESCRIBE and
-        // "TRUNCATE RTINDEX requires an existing RT table" of TRUNCATE
+        // the server words it differently per statement and per version: "table 'x' absent" of a
+        // write, "unknown local table(s) 'x' in search request" of a search, "no such table" of
+        // DESCRIBE, "TRUNCATE RTINDEX requires an existing RT table" of a TRUNCATE up to
+        // Manticore 28 and "Table 'x' does not exist" of the same statement after it
         return (bool)preg_match(
-            '/(absent|no such table|unknown (local )?table|requires an existing)/i',
+            '/(absent|no such table|does not exist|unknown (local )?table|requires an existing)/i',
             $this->serverError($result)
         );
     }

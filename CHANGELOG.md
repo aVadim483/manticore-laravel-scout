@@ -109,6 +109,17 @@ All notable changes to this project are documented here. The format is based on
   model; a removal quietly dropped such a key instead, which left the row of a deleted model in the
   index with nobody to hear of it.
 
+* **An index that is not there is recognised on a server of any version.** Manticore words it
+  differently per version, and 29 answers a `TRUNCATE` of a table that is not there with "Table 'x'
+  does not exist" where 28 said "TRUNCATE RTINDEX requires an existing RT table" — so
+  `scout:flush` of an index that was never created raised instead of doing nothing.
+
+* **`auto_create` off keeps the schema in the hands of the application again.** The driver used to
+  hand the write to the server and let it fail; Manticore creates the table itself from version 29
+  on, out of a schema guessed from the row, which is the one thing turning `auto_create` off is
+  meant to prevent. The driver now asks whether the table is there and raises, naming the index and
+  what to do about it, before anything is written.
+
 * **The answer of the server is read without the statement it is about.** Whether an index is
   missing, and which column is, is read out of what the server said — while the message a client
   raises can carry the statement in front of it, and the statement carries the phrase a user typed.

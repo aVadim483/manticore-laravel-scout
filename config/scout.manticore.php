@@ -67,10 +67,15 @@ return [
     | Creation of a missing index
     |--------------------------------------------------------------------------
     |
-    | Manticore has no schema of its own to fall back on - a write to a table that does not exist
-    | is an error. With this on, the driver creates the table of a model on the first write: out
-    | of the schema below, out of a manticoreSchema() of the model, or out of the values written.
-    | Turn it off to keep the schema of the indexes entirely in your own hands.
+    | Manticore has no schema of its own to fall back on. With this on, the driver creates the
+    | table of a model on the first write: out of the schema below, out of a manticoreSchema() of
+    | the model, or out of the values written.
+    |
+    | Turn it off to keep the schema of the indexes entirely in your own hands: a write to an
+    | index that is not there then raises instead of writing. The driver asks the server whether
+    | the table is there rather than letting the write answer that - Manticore creates a table of
+    | its own guessing on a write from version 29 on, which is the one thing this is turned off
+    | to prevent.
     |
     */
 

@@ -111,7 +111,7 @@ down:
 | `limit` | `SCOUT_MANTICORE_LIMIT` | `1000` | the limit of a search that says nothing about it - the server would answer with 20 rows |
 | `max_matches` | `SCOUT_MANTICORE_MAX_MATCHES` | `null` | rows the server keeps per query, i.e. how deep paging goes and how far `total()` counts |
 | `escape_query` | `SCOUT_MANTICORE_ESCAPE_QUERY` | `true` | escape the phrase, so that what a user typed is searched for as it was written |
-| `auto_create` | `SCOUT_MANTICORE_AUTO_CREATE` | `true` | create the index on the first write to it |
+| `auto_create` | `SCOUT_MANTICORE_AUTO_CREATE` | `true` | create the index on the first write to it; off, a write to an index that is not there raises |
 | `auto_columns` | `SCOUT_MANTICORE_AUTO_COLUMNS` | `true` | add a column the index is missing and write again |
 | `batch_size` | `SCOUT_MANTICORE_BATCH_SIZE` | `100` | rows of one `REPLACE`; 0 turns the limit off |
 | `schemas` | - | `[]` | schemas of the indexes, by index name |
@@ -195,6 +195,11 @@ public function manticoreSchema(): array
     ];
 }
 ```
+
+With `auto_create` off, a write to an index that is not there raises instead - and the driver asks
+the server whether the table is there rather than letting the write answer that, because Manticore
+creates a table out of its own guess on a write from version 29 on, which is what turning
+`auto_create` off is meant to prevent.
 
 **3. The values.** With neither of the two, the index is built out of the first rows written to it:
 a string becomes a `text` field, an integer a `bigint`, a float a `float`, a bool a `bool`, an array
