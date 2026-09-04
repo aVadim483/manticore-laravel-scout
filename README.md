@@ -3,9 +3,9 @@
 [![GitHub Release](https://img.shields.io/github/v/release/aVadim483/manticore-laravel-scout)](https://packagist.org/packages/avadim/manticore-laravel-scout)
 [![Packagist Downloads](https://img.shields.io/packagist/dt/avadim/manticore-laravel-scout?color=%23aa00aa)](https://packagist.org/packages/avadim/manticore-laravel-scout)
 [![GitHub License](https://img.shields.io/github/license/aVadim483/manticore-laravel-scout)](https://packagist.org/packages/avadim/manticore-laravel-scout)
-[![Static Badge](https://img.shields.io/badge/php-%3E%3D7.4-005fc7)](https://packagist.org/packages/avadim/manticore-laravel-scout)
-[![Static Badge](https://img.shields.io/badge/laravel-8%20--%2013-ff2d20)](https://packagist.org/packages/avadim/manticore-laravel-scout)
-[![Static Badge](https://img.shields.io/badge/scout-9%20--%2011-ff2d20)](https://packagist.org/packages/avadim/manticore-laravel-scout)
+[![Static Badge](https://img.shields.io/badge/php-%3E%3D8.2-005fc7)](https://packagist.org/packages/avadim/manticore-laravel-scout)
+[![Static Badge](https://img.shields.io/badge/laravel-11%20--%2013-ff2d20)](https://packagist.org/packages/avadim/manticore-laravel-scout)
+[![Static Badge](https://img.shields.io/badge/scout-11-ff2d20)](https://packagist.org/packages/avadim/manticore-laravel-scout)
 
 # ManticoreSearch driver for Laravel Scout
 
@@ -49,10 +49,10 @@ translates what Scout asks for into a query of the builder and maps the answer b
 
 ## Requirements
 
-* PHP >= 7.4
-* Laravel 8 - 13 (or Lumen of the same generation), Laravel Scout 9 - 11
+* PHP >= 8.2
+* Laravel 11 - 13 (or Lumen of the same generation), Laravel Scout 11
 * ManticoreSearch with the MySQL protocol open (port 9306 by default)
-* [`avadim/manticore-query-builder-laravel`](https://github.com/aVadim483/manticore-query-builder-laravel) >= 2.1
+* [`avadim/manticore-query-builder-laravel`](https://github.com/aVadim483/manticore-query-builder-laravel) >= 3.0
 
 ## Installation
 
@@ -314,7 +314,17 @@ column you filter by belongs in a schema of the config or of the model.
 beyond that is the limit itself until `max_matches` is raised.
 
 **The schema cache lives as long as the connection.** In Octane or a queue worker that is a long
-time; a table changed elsewhere calls for `\ManticoreDb::forgetSchema()`.
+time; a table changed elsewhere calls for `\ManticoreDb::forgetSchema()`, or for
+`forgetSchemas()` of the manager, which reaches every connection it built rather than the default
+one alone. The connection itself is dropped by name with `purge()` and opened again by
+`reconnect()` - what a worker whose handle the server closed overnight needs:
+
+```php
+use avadim\Manticore\Laravel\Manager;
+
+app(Manager::class)->forgetSchemas();
+app(Manager::class)->reconnect();
+```
 
 ## Tests
 

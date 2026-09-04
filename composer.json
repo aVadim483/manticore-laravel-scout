@@ -15,17 +15,17 @@
     "type": "library",
     "homepage": "https://github.com/aVadim483/manticore-laravel-scout",
     "require": {
-        "php": "^7.4|^8.1",
+        "php": "^8.2",
         "ext-json": "*",
-        "avadim/manticore-query-builder-laravel": "^2.1",
-        "laravel/scout": "^9.0|^10.0|^11.0",
-        "illuminate/support": "^8.0|^9.0|^10.0|^11.0|^12.0|^13.0",
-        "illuminate/contracts": "^8.0|^9.0|^10.0|^11.0|^12.0|^13.0",
-        "illuminate/database": "^8.0|^9.0|^10.0|^11.0|^12.0|^13.0"
+        "avadim/manticore-query-builder-laravel": "^3.0",
+        "laravel/scout": "^11.0",
+        "illuminate/support": "^11.0|^12.0|^13.0",
+        "illuminate/contracts": "^11.0|^12.0|^13.0",
+        "illuminate/database": "^11.0|^12.0|^13.0"
     },
     "require-dev": {
-        "orchestra/testbench": "^6.0|^7.0|^8.0|^9.0|^10.0|^11.0",
-        "phpunit/phpunit": "^9.0|^10.0|^11.0|^12.0"
+        "orchestra/testbench": "^9.0|^10.0|^11.0",
+        "phpunit/phpunit": "^10.5|^11.0|^12.0|^13.0"
     },
     "license": "MIT",
     "autoload": {

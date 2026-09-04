@@ -6,6 +6,36 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Breaking
+
+* **Requires `avadim/manticore-query-builder-laravel` 3.0, and with it Laravel 11 and PHP 8.2.**
+  The wrapper this driver stands on narrowed its own range to `illuminate/* ^11.0|^12.0|^13.0`
+  and `php ^8.2`, so anything below that became unreachable to composer here whatever this
+  package declared. The ranges say it now: `php ^8.2`, `illuminate/* ^11.0|^12.0|^13.0`.
+
+  An application on an older Laravel is not broken by this — composer never re-resolves a
+  framework that is already installed, so it keeps installing the 2.x line of the family.
+
+* **Requires Laravel Scout 11.** The range said `^9.0|^10.0|^11.0`, and only the last of the
+  three ever worked: the driver reads `$builder->wheres` as a list of `['field', 'operator',
+  'value']`, which is the shape Scout gave it in 11.0.0 — before that it is a dictionary of
+  `[field => value]`, so every `where()` of a search raised an error, and so did the
+  `__soft_deleted` the soft delete of Scout adds by itself. Scout 9 is out of reach anyway now
+  (it asks for `illuminate/* ^8.0|^9.0|^10.0`), and Scout 11 covers every Laravel of the range
+  above, so nothing of what is supported is left behind by narrowing to `^11.0`.
+
+* The ranges of the dev dependencies follow the supported Laravel versions:
+  `orchestra/testbench ^9.0|^10.0|^11.0` and `phpunit/phpunit ^10.5|^11.0|^12.0|^13.0`.
+
+### Added
+
+* Continuous integration: the whole suite runs against a ManticoreSearch service container on
+  every Laravel the package declares — 11 on PHP 8.2, 12 on 8.3, 13 on 8.4 and on 8.5. Both ends
+  of the range are checked rather than asserted, which is what the range of a driver is worth.
+* `.gitattributes` — the tests and the CI config are no longer part of the package: they are read
+  on GitHub, not from `vendor/`. Line endings are pinned to LF as well, so that a file does not
+  depend on the machine it was committed from.
+
 ### Fixed
 
 * A published config is read at last. It went to `config/manticore-scout.php`, which Laravel loads
@@ -15,6 +45,14 @@ All notable changes to this project are documented here. The format is based on
   sets it with the dot notation, so the file lands in the `manticore` section of `scout` as it was
   meant to. A `config/manticore-scout.php` published earlier can be renamed to
   `config/scout.manticore.php` — its values start being read once it is.
+
+* Three fixes of the query builder 2.2 arrive with the wrapper, and they are the driver's as much
+  as anyone's: a column named after a PHP function is a column again, so `where('date', ...)`,
+  `where('time', ...)` and `where('count', ...)` of a search reach the server instead of calling
+  the function; a statement the server refused is never reported as a successful empty answer,
+  which is the path `auto_create` and `auto_columns` stand on; and a value that looks like
+  `:word` is escaped rather than read as a named parameter, so a phrase a user typed cannot break
+  the statement.
 
 ## [2.1.0] - 2026-08-15
 

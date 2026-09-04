@@ -3,9 +3,9 @@
 [![GitHub Release](https://img.shields.io/github/v/release/aVadim483/manticore-laravel-scout)](https://packagist.org/packages/avadim/manticore-laravel-scout)
 [![Packagist Downloads](https://img.shields.io/packagist/dt/avadim/manticore-laravel-scout?color=%23aa00aa)](https://packagist.org/packages/avadim/manticore-laravel-scout)
 [![GitHub License](https://img.shields.io/github/license/aVadim483/manticore-laravel-scout)](https://packagist.org/packages/avadim/manticore-laravel-scout)
-[![Static Badge](https://img.shields.io/badge/php-%3E%3D7.4-005fc7)](https://packagist.org/packages/avadim/manticore-laravel-scout)
-[![Static Badge](https://img.shields.io/badge/laravel-8%20--%2013-ff2d20)](https://packagist.org/packages/avadim/manticore-laravel-scout)
-[![Static Badge](https://img.shields.io/badge/scout-9%20--%2011-ff2d20)](https://packagist.org/packages/avadim/manticore-laravel-scout)
+[![Static Badge](https://img.shields.io/badge/php-%3E%3D8.2-005fc7)](https://packagist.org/packages/avadim/manticore-laravel-scout)
+[![Static Badge](https://img.shields.io/badge/laravel-11%20--%2013-ff2d20)](https://packagist.org/packages/avadim/manticore-laravel-scout)
+[![Static Badge](https://img.shields.io/badge/scout-11-ff2d20)](https://packagist.org/packages/avadim/manticore-laravel-scout)
 
 # Драйвер ManticoreSearch для Laravel Scout
 
@@ -49,10 +49,10 @@ composer require avadim/manticore-laravel-scout
 
 ## Требования
 
-* PHP >= 7.4
-* Laravel 8 — 13 (или Lumen того же поколения), Laravel Scout 9 — 11
+* PHP >= 8.2
+* Laravel 11 — 13 (или Lumen того же поколения), Laravel Scout 11
 * ManticoreSearch с открытым протоколом MySQL (по умолчанию порт 9306)
-* [`avadim/manticore-query-builder-laravel`](https://github.com/aVadim483/manticore-query-builder-laravel) >= 2.1
+* [`avadim/manticore-query-builder-laravel`](https://github.com/aVadim483/manticore-query-builder-laravel) >= 3.0
 
 ## Установка
 
@@ -313,7 +313,17 @@ php artisan scout:delete-all-indexes           # удалить все табл�
 за этой границей, показывается как сама граница, пока `max_matches` не поднят.
 
 **Кеш схемы живёт столько же, сколько соединение.** В Octane или воркере очереди это долго; если
-таблицу изменили в обход этого соединения, нужен `\ManticoreDb::forgetSchema()`.
+таблицу изменили в обход этого соединения, нужен `\ManticoreDb::forgetSchema()` — либо
+`forgetSchemas()` менеджера, который сбрасывает кеш всех построенных им соединений, а не только
+соединения по умолчанию. Само соединение сбрасывается по имени через `purge()` и открывается
+заново через `reconnect()` — это то, что нужно воркеру, у которого сервер закрыл хендл за ночь:
+
+```php
+use avadim\Manticore\Laravel\Manager;
+
+app(Manager::class)->forgetSchemas();
+app(Manager::class)->reconnect();
+```
 
 ## Тесты
 
