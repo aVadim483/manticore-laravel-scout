@@ -54,7 +54,9 @@ translates what Scout asks for into a query of the builder and maps the answer b
 
 * PHP >= 8.2
 * Laravel 11 - 13 (or Lumen of the same generation), Laravel Scout 11
-* ManticoreSearch with the MySQL protocol open (port 9306 by default)
+* ManticoreSearch 7.0 or above, with the MySQL protocol open (port 9306 by default). That is where
+  the CI runs — 7.0.0, 13.11.1 and the current release — and older is untested rather than known to
+  break: the registry no longer carries an image of it. The semantic search asks for more, see below.
 * [`avadim/manticore-query-builder-laravel`](https://github.com/aVadim483/manticore-query-builder-laravel) >= 3.0
 
 ## Installation
@@ -328,6 +330,18 @@ makes a hybrid search one query here rather than two and a merge of the answers.
 
 Two things are needed for it: a `float_vector` column in the index, written along with the model,
 and something that turns the phrase of a search into a vector.
+
+The column asks something of the server as well. Vectors came with ManticoreSearch 6.3, and the KNN
+of it is a library of its own: a build without that library takes the `CREATE TABLE` and answers
+`knn library not loaded`. What the server has is in its own words:
+
+```sql
+SHOW STATUS LIKE 'version';
+-- 29.0.2 ... (columnar 13.9.0 ...) (secondary 13.9.0 ...) (knn 13.9.0 ...) (embeddings 1.1.1 ...)
+```
+
+The `knn` in there is the one that matters — the official image carries it, and so does every
+release the CI of this package runs the vector tests against.
 
 ```php
 // config/scout.php
