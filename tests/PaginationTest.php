@@ -8,6 +8,7 @@ use avadim\Manticore\QueryBuilder\Query;
 use avadim\Manticore\Scout\Tests\Support\Post;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\Pagination\Paginator;
+use Laravel\Scout\Builder;
 
 /**
  * Paging: Scout builds the paginator itself, the driver answers with the page and the total.
@@ -86,6 +87,46 @@ class PaginationTest extends TestCase
         // 200 pages of 10 rows reach beyond the 1000 rows the server keeps by default
         $this->assertStringContainsString('max_matches=2000', (string)$sql);
         $this->assertStringContainsString('LIMIT 1990,10', (string)$sql);
+    }
+
+    /**
+     * A page of an engine of its own, with the SQL it was answered from
+     *
+     * @param array $config
+     * @param int $perPage
+     * @param int $page
+     *
+     * @return string
+     */
+    protected function sqlOfPage(array $config, int $perPage, int $page): string
+    {
+        $sql = '';
+        $builder = new Builder(new Post(), 'manticore', function (Query $query) use (&$sql) {
+            $sql = (string)$query->toSql();
+
+            return $query;
+        });
+
+        $this->engine($config)->paginate($builder, $perPage, $page);
+
+        return $sql;
+    }
+
+    public function testAMaxMatchesOfTheConfigIsTheDepthOfEveryQuery(): void
+    {
+        $this->seedPosts(1);
+
+        // how deep paging goes and how far the total is counted, not only for a deep page
+        $this->assertStringContainsString('max_matches=5000', $this->sqlOfPage(['max_matches' => 5000], 10, 2));
+    }
+
+    public function testAPageBeyondALoweredMaxMatchesRaisesItAllTheSame(): void
+    {
+        $this->seedPosts(1);
+
+        // a config below the default of the server is a deliberate one, and the page still has to
+        // fit into what the query is given
+        $this->assertStringContainsString('max_matches=200', $this->sqlOfPage(['max_matches' => 100], 10, 20));
     }
 
     public function testAShallowPageLeavesMaxMatchesAlone(): void

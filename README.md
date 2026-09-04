@@ -30,8 +30,10 @@ translates what Scout asks for into a query of the builder and maps the answer b
 * [Configuration](#configuration)
 * [Quick start](#quick-start)
 * [The schema of an index](#the-schema-of-an-index)
+* [Keeping an index in line with its schema](#keeping-an-index-in-line-with-its-schema)
 * [What a search understands](#what-a-search-understands)
 * [Options of a query](#options-of-a-query)
+* [Semantic and hybrid search](#semantic-and-hybrid-search)
 * [The query language of Manticore](#the-query-language-of-manticore)
 * [Soft deletes](#soft-deletes)
 * [Artisan commands](#artisan-commands)
@@ -111,7 +113,10 @@ down:
 | `escape_query` | `SCOUT_MANTICORE_ESCAPE_QUERY` | `true` | escape the phrase, so that what a user typed is searched for as it was written |
 | `auto_create` | `SCOUT_MANTICORE_AUTO_CREATE` | `true` | create the index on the first write to it |
 | `auto_columns` | `SCOUT_MANTICORE_AUTO_COLUMNS` | `true` | add a column the index is missing and write again |
+| `batch_size` | `SCOUT_MANTICORE_BATCH_SIZE` | `100` | rows of one `REPLACE`; 0 turns the limit off |
 | `schemas` | - | `[]` | schemas of the indexes, by index name |
+| `index-settings` | - | `[]` | the indexes `scout:sync-index-settings` walks; empty means the ones of `schemas` |
+| `semantic` | - | see below | the vector column, the neighbours asked for, and the embedder of `semantic()` and `hybrid()` |
 
 ## Quick start
 
@@ -199,6 +204,40 @@ better described by hand - see the limits below.
 A column added to `toSearchableArray()` later is added to the index as well (`auto_columns`), and
 the rows written before it keep an empty value for it until they are imported again.
 
+## Keeping an index in line with its schema
+
+A schema changes: a column is added to `toSearchableArray()`, `min_infix_len` turns out to be
+needed. The command of Scout brings the index to what the schema says:
+
+```sh
+php artisan scout:sync-index-settings
+```
+
+It walks the indexes named in `scout.manticore.index-settings` and, when that is empty, the ones of
+`schemas`. A column the index does not have is added and the options of the table are applied; a
+column that is already there keeps the type it has, because Manticore cannot change one in place
+without losing what is written in it - a changed type is a matter of a new index and an import
+into it.
+
+`index-settings` is a list of index names and model classes, or a map of them to a schema of their
+own, which wins over `schemas` key by key:
+
+```php
+// config/scout.php
+'manticore' => [
+    'index-settings' => [
+        'posts',
+        \App\Models\Comment::class,
+        'pages' => [
+            'columns' => ['slug' => 'string'],
+            'options' => ['min_infix_len' => 3],
+        ],
+    ],
+],
+```
+
+The same happens to one index at a time on `php artisan scout:index posts`.
+
 ## What a search understands
 
 The builder of Scout is a small one, and all of it works here:
@@ -259,6 +298,97 @@ Post::search('manticore', function (Query $query, string $phrase) {
 
 Return the query and the driver runs it, or run it yourself and return the `ResultSet`.
 
+## Semantic and hybrid search
+
+Manticore searches by vectors as well as by words, and takes both in one statement - which is what
+makes a hybrid search one query here rather than two and a merge of the answers.
+
+Two things are needed for it: a `float_vector` column in the index, written along with the model,
+and something that turns the phrase of a search into a vector.
+
+```php
+// config/scout.php
+'manticore' => [
+    'semantic' => [
+        'column'   => 'embedding',
+        'k'        => null,                          // neighbours asked for; null: what the page needs
+        'embedder' => \App\Search\Embedder::class,
+    ],
+],
+```
+
+The embedder is a callable, or the name of an invokable class the container builds. It is given the
+phrase and the model, and answers with an array of numbers:
+
+```php
+class Embedder
+{
+    public function __invoke(string $phrase, $model): array
+    {
+        return $this->vectors->of($phrase);
+    }
+}
+```
+
+The column belongs in the schema of the index, where a vector takes more than a type name - hence
+the callable form of a schema:
+
+```php
+use avadim\Manticore\QueryBuilder\Schema\SchemaTable;
+
+public function manticoreSchema(): callable
+{
+    return function (SchemaTable $table) {
+        $table->text('title');
+        $table->integer('author_id');
+        $table->floatVector('embedding', 1536, 'cosine');
+    };
+}
+```
+
+and in `toSearchableArray()`, as the vector of the model itself:
+
+```php
+'embedding' => $this->embedding,     // an array of floats
+```
+
+Then the two searches of Scout answer:
+
+```php
+Post::search('a fruit that keeps the doctor away')->semantic()->get();
+Post::search('apple')->semantic(0.8)->get();
+Post::search('apple')->hybrid(1, 2)->get();
+```
+
+`semantic()` searches by the vector alone: `WHERE knn(embedding, k, (…))`, and `semantic(0.8)` adds
+the similarity the row has to reach. `hybrid($textWeight, $semanticWeight)` asks for both at once,
+and `MATCH()` is a condition of its own - a hybrid search keeps to the rows carrying the words, and
+ranks them by `<text weight> * weight() + <semantic weight> * (1 - knn_dist())`. An `orderBy()` of
+your own is left alone.
+
+What the server answered with is on the model, next to the rest of the metadata:
+
+```php
+$post->scoutMetadata()['_knn_dist'];       // the distance, 0 being the vector itself
+$post->scoutMetadata()['_similarity'];     // 1 - the distance, i.e. 0 to 1 for a cosine index
+$post->scoutMetadata()['_hybrid_score'];   // of a hybrid search, what it was ranked by
+```
+
+The weight of a full-text match is the score of the ranker - in the thousands - while the
+similarity is 0 to 1, so the weights of `hybrid()` are what brings the two to one scale.
+
+The settings are given per query as well, next to the other options:
+
+```php
+Post::search('apple')->semantic()->options([
+    'semantic' => ['column' => 'title_vector', 'k' => 100],
+])->get();
+```
+
+`k` is the number of neighbours the server looks at before anything else narrows the result, so a
+`where()` or the words of a hybrid search cut into those `k` rows rather than into the whole index.
+Left alone it is as deep as the page reaches.
+
 ## The query language of Manticore
 
 What a user typed into a search box is text, not an expression: a dash in `iPhone -Pro` would
@@ -293,6 +423,7 @@ The commands of Scout work as they do with any other driver:
 php artisan scout:import "App\Models\Post"     # write every model to the index
 php artisan scout:flush "App\Models\Post"      # empty the index, keep the table
 php artisan scout:index posts                  # create the index of the config schema
+php artisan scout:sync-index-settings          # add what an index is missing of its schema
 php artisan scout:delete-index posts           # drop the table
 php artisan scout:delete-all-indexes           # drop every table whose name carries scout.prefix
 ```
@@ -312,7 +443,9 @@ finds words in it, but `where()` and `orderBy()` need an attribute - `int`, `big
 column you filter by belongs in a schema of the config or of the model.
 
 **`total()` counts up to `max_matches`.** The server keeps 1000 rows per query by default; a total
-beyond that is the limit itself until `max_matches` is raised.
+beyond that is the limit itself until `max_matches` is raised. What the config says is the depth of
+every query, not only of a page that reaches beyond it - a page deeper than that raises it for
+itself.
 
 **The schema cache lives as long as the connection.** In Octane or a queue worker that is a long
 time; a table changed elsewhere calls for `\ManticoreDb::forgetSchema()`, or for

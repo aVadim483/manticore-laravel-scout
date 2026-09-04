@@ -29,6 +29,32 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+* **Semantic and hybrid search.** The engine answers to `SupportsSemanticSearch` of Scout, so
+  `->semantic()` and `->hybrid()` of a search are its own rather than an exception: the first
+  searches by the vector alone (`WHERE knn(<column>, <k>, ...)`), the second asks for the vector
+  and the words at once, which Manticore takes in one statement — a hybrid search here is one
+  query, not two and a merge of the answers. It is ranked by
+  `<text weight> * weight() + <semantic weight> * (1 - knn_dist())`, and `->semantic($min)` filters
+  by the similarity a row has to reach. The distance, the similarity and the blended score come
+  back as `_knn_dist`, `_similarity` and `_hybrid_score` of `scoutMetadata()`.
+
+  What turns the phrase of a search into a vector is the `semantic.embedder` of the config — a
+  callable, or the name of an invokable class the container builds — next to the vector column and
+  the number of neighbours to ask the server for. A query overrides all three through
+  `options(['semantic' => [...]])`.
+
+* **`php artisan scout:sync-index-settings`.** The engine answers to `UpdatesIndexSettings` of
+  Scout, so the command of the framework brings an index in line with the schema it is described
+  by: a column the index does not have is added and the options of the table are applied, while a
+  column that is there keeps its type — Manticore cannot change one in place without losing what is
+  written in it. The command walks `scout.manticore.index-settings`, and when that is empty, the
+  indexes named in `schemas`, so a schema written down once is not repeated for it. `scout:index`
+  does the same for the one index it is given.
+
+* `batch_size` — the rows of one `REPLACE`, 100 by default. `scout:import` hands over 500 models at
+  a time, and a statement carrying that many rows of text runs into `max_packet_size` of the
+  server, which drops the connection instead of naming a reason. 0 turns the limit off.
+
 * Continuous integration: the whole suite runs against a ManticoreSearch service container on
   every Laravel the package declares — 11 on PHP 8.2, 12 on 8.3, 13 on 8.4 and on 8.5. Both ends
   of the range are checked rather than asserted, which is what the range of a driver is worth.
@@ -45,6 +71,20 @@ All notable changes to this project are documented here. The format is based on
   sets it with the dot notation, so the file lands in the `manticore` section of `scout` as it was
   meant to. A `config/manticore-scout.php` published earlier can be renamed to
   `config/scout.manticore.php` — its values start being read once it is.
+
+* **A `max_matches` of the config is the depth of every query.** It was compared against the
+  default of the server rather than against itself, so a value below 1000 — a deliberate one, since
+  the key exists to be set — was left as it was by a page that reached beyond it, and the server
+  answered the page with an error.
+
+* **A key that is not a document id is an error on a removal too.** A write says so and names the
+  model; a removal quietly dropped such a key instead, which left the row of a deleted model in the
+  index with nobody to hear of it.
+
+* **The answer of the server is read without the statement it is about.** Whether an index is
+  missing, and which column is, is read out of what the server said — while the message a client
+  raises can carry the statement in front of it, and the statement carries the phrase a user typed.
+  A search for "no such table" is a search, not an index that is not there.
 
 * Three fixes of the query builder 2.2 arrive with the wrapper, and they are the driver's as much
   as anyone's: a column named after a PHP function is a column again, so `where('date', ...)`,

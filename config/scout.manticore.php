@@ -92,6 +92,66 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Rows of one statement
+    |--------------------------------------------------------------------------
+    |
+    | "php artisan scout:import" hands over 500 models at a time (scout.chunk.searchable), and a
+    | REPLACE carrying that many rows of text runs into max_packet_size of the server, which drops
+    | the connection instead of naming a reason. The rows are written in statements of this many
+    | rows; 0 turns the limit off.
+    |
+    */
+
+    'batch_size' => env('SCOUT_MANTICORE_BATCH_SIZE', 100),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Semantic and hybrid search
+    |--------------------------------------------------------------------------
+    |
+    | ->semantic() of Scout searches by meaning rather than by words, and ->hybrid() by both at
+    | once - which Manticore answers in one statement, knn() and MATCH() side by side. What the
+    | server compares are vectors, so the phrase has to be turned into one: "embedder" is a
+    | callable, or the name of an invokable class the container builds, taking the phrase and the
+    | model and answering with an array of numbers.
+    |
+    |     'embedder' => \App\Search\Embedder::class,
+    |
+    | "column" is the float_vector column of the index the vectors live in, and "k" how many
+    | neighbours the server is asked for - null asks for as many as the page needs.
+    |
+    | The distance comes back as $model->scoutMetadata()['_similarity'], counted as 1 - the
+    | distance of the server, i.e. 1 for the vector itself. That is a similarity of 0 to 1 for a
+    | cosine index, which is what ->semantic($minSimilarity) filters by.
+    |
+    */
+
+    'semantic' => [
+        'column'   => env('SCOUT_MANTICORE_SEMANTIC_COLUMN', 'embedding'),
+        'k'        => env('SCOUT_MANTICORE_SEMANTIC_K'),
+        'embedder' => null,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Indexes of "php artisan scout:sync-index-settings"
+    |--------------------------------------------------------------------------
+    |
+    | The command brings an index in line with the schema it is described by: a column that is
+    | missing is added, the options of the table are applied. It walks what is named here, either
+    | as a list of index names and model classes or as a map of name to schema:
+    |
+    |     'index-settings' => ['posts', \App\Models\Comment::class],
+    |
+    | Left empty, it walks the indexes named in "schemas" above, so a schema written down once
+    | does not have to be repeated here.
+    |
+    */
+
+    'index-settings' => [],
+
+    /*
+    |--------------------------------------------------------------------------
     | Schemas of the indexes
     |--------------------------------------------------------------------------
     |

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace avadim\Manticore\Scout\Tests;
 
+use avadim\Manticore\Laravel\Manager;
+use avadim\Manticore\Scout\ManticoreEngine;
 use avadim\Manticore\Scout\Tests\Support\HiddenPost;
 use avadim\Manticore\Scout\Tests\Support\Post;
 
@@ -87,6 +89,65 @@ class ModelSyncTest extends TestCase
 
         $this->assertCount(2, Post::search('manticore')->get());
         $this->assertCount(1, Post::search('manticore')->where('extra_flag', 1)->get());
+    }
+
+    public function testTheRowsAreWrittenInStatementsOfBatchSize(): void
+    {
+        $posts = collect(range(1, 5))->map(function ($n) {
+            return $this->makePost(['title' => 'manticore batch ' . $n, 'author_id' => $n]);
+        });
+
+        $engine = new class(
+            $this->app->make(Manager::class),
+            array_merge((array)config('scout.manticore'), ['batch_size' => 2]),
+            false
+        ) extends ManticoreEngine {
+            /**
+             * @var int
+             */
+            public $statements = 0;
+
+            /**
+             * @param string $index
+             * @param \Illuminate\Database\Eloquent\Model $model
+             * @param array $batch
+             *
+             * @return void
+             */
+            protected function write(string $index, $model, array $batch)
+            {
+                $this->statements++;
+
+                parent::write($index, $model, $batch);
+            }
+        };
+
+        $engine->update($posts->first()->newCollection($posts->all()));
+
+        // five rows of the same columns, two rows to a statement
+        $this->assertSame(3, $engine->statements);
+        $this->assertCount(5, Post::search('batch')->get());
+    }
+
+    public function testAKeyThatIsNoDocumentIdIsAnErrorOnARemovalToo(): void
+    {
+        $post = $this->makePost(['title' => 'manticore keyed']);
+
+        $stranger = new class extends Post {
+            /**
+             * @return mixed
+             */
+            public function getScoutKey()
+            {
+                return 'not-a-number';
+            }
+        };
+
+        // dropping the key silently would leave the row of a deleted model in the index
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('a document id of Manticore is a positive integer');
+
+        $this->engine()->delete($post->newCollection([$stranger]));
     }
 
     public function testAColumnAddedToTheSearchableArrayIsAddedToTheIndex(): void

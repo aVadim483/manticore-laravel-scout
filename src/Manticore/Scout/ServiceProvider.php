@@ -38,6 +38,8 @@ class ServiceProvider extends BaseServiceProvider
      */
     public function boot(): void
     {
+        $this->defaultIndexSettings();
+
         if ($this->app instanceof LaravelApplication) {
             // the dot of the name is what makes the published file land in scout.manticore: the
             // config loader of Laravel takes the key of a file from its name and sets it with the
@@ -52,6 +54,34 @@ class ServiceProvider extends BaseServiceProvider
                 (bool)$app['config']->get('scout.soft_delete', false)
             );
         });
+    }
+
+    /**
+     * The indexes "php artisan scout:sync-index-settings" walks, when nothing else names them.
+     *
+     * The command of Scout reads scout.<driver>.index-settings and says there is nothing to do
+     * when it is empty. The schemas of this driver live under a key of their own, so the names of
+     * the indexes described there are what the command is given - unless the application named
+     * the indexes itself.
+     *
+     * In boot() rather than in register(): the schemas are read here, and a schema written by
+     * another provider - or by the environment of a test - is only there once every register()
+     * has run.
+     *
+     * @return void
+     */
+    protected function defaultIndexSettings(): void
+    {
+        $config = $this->app['config'];
+
+        if ($config->get('scout.manticore.index-settings')) {
+            return;
+        }
+
+        $schemas = (array)$config->get('scout.manticore.schemas', []);
+        if ($schemas) {
+            $config->set('scout.manticore.index-settings', array_keys($schemas));
+        }
     }
 
     /**

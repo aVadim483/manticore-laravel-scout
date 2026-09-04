@@ -12,6 +12,8 @@ use avadim\Manticore\QueryBuilder\ResultSet;
 use Illuminate\Support\Collection;
 use Illuminate\Support\LazyCollection;
 use Laravel\Scout\Builder;
+use Laravel\Scout\Contracts\SupportsSemanticSearch;
+use Laravel\Scout\Contracts\UpdatesIndexSettings;
 use Laravel\Scout\Engines\Engine;
 
 /**
@@ -26,17 +28,32 @@ use Laravel\Scout\Engines\Engine;
  *
  * @package avadim\Manticore\Scout
  */
-class ManticoreEngine extends Engine
+class ManticoreEngine extends Engine implements UpdatesIndexSettings, SupportsSemanticSearch
 {
     /**
      * Keys of Builder::options() the driver reads itself; the rest becomes the OPTION clause
      */
-    const RESERVED_OPTIONS = ['fields', 'escape', 'highlight'];
+    const RESERVED_OPTIONS = ['fields', 'escape', 'highlight', 'semantic'];
 
     /**
      * The number of rows Manticore keeps per query unless told otherwise
      */
     const SERVER_MAX_MATCHES = 1000;
+
+    /**
+     * Rows of one REPLACE, unless batch_size of the config says otherwise
+     */
+    const BATCH_SIZE = 100;
+
+    /**
+     * The column a vector search adds: the distance of the server as a similarity of 0 to 1
+     */
+    const SIMILARITY_COLUMN = '_similarity';
+
+    /**
+     * The column a hybrid search ranks by: the weights of Scout over the two scores
+     */
+    const HYBRID_COLUMN = '_hybrid_score';
 
     /**
      * @var \avadim\Manticore\Laravel\Manager
@@ -203,11 +220,9 @@ class ManticoreEngine extends Engine
                 return $model->getScoutKey();
             });
 
-        $ids = $keys->filter(function ($key) {
-                return $this->isDocumentId($key);
-            })
-            ->map(function ($key) {
-                return (int)$key;
+        $class = get_class($model);
+        $ids = $keys->map(function ($key) use ($class) {
+                return $this->assertDocumentId($key, $class);
             })
             ->values()
             ->all();
@@ -311,6 +326,87 @@ class ManticoreEngine extends Engine
         return $dropped;
     }
 
+    /**
+     * Bring the index in line with the schema it is described by ("php artisan scout:index" and
+     * "php artisan scout:sync-index-settings").
+     *
+     * The settings are a schema of this driver - columns and table options, the same shape the
+     * schemas of the config have. What the command passes wins over what the config says, and
+     * what it leaves out is taken from there, so an application that has written its schemas
+     * down once has nothing to repeat under index-settings.
+     *
+     * A column the index does not have is added; a column that is there keeps the type it has,
+     * because Manticore cannot change one in place without losing what is written in it.
+     *
+     * @param string $name
+     * @param array $settings columns and options, as of scout.manticore.schemas
+     *
+     * @return void
+     */
+    public function updateIndexSettings(string $name, array $settings = [])
+    {
+        $declared = $this->normalizeSchema($settings);
+        $configured = $this->schemaOf($name);
+
+        $columns = $declared['columns'] ?: $configured['columns'];
+        if (is_array($declared['columns']) && is_array($configured['columns'])) {
+            $columns = $declared['columns'] + $configured['columns'];
+        }
+        $options = array_merge($configured['options'], $declared['options']);
+
+        $connection = $this->connection();
+
+        if (!$connection->hasTable($name)) {
+            if (empty($columns)) {
+                throw new \LogicException(
+                    'No schema of the index "' . $name . '" to create it with. Describe it in '
+                    . 'scout.manticore.schemas.' . $name . ', in scout.manticore.index-settings.'
+                    . $name . ' or in a manticoreSchema() of the model.'
+                );
+            }
+
+            $this->assertSuccess($connection->create($name, $columns, $options, true));
+            $this->knownIndexes[$name] = true;
+
+            return;
+        }
+
+        if (is_array($columns) && $columns) {
+            $existing = $connection->tableDescribe($name);
+            foreach ($columns as $column => $type) {
+                if (!is_string($column) || $column === 'id' || isset($existing[$column])) {
+                    continue;
+                }
+
+                $this->assertSuccess($connection->addColumn($name, $column, $type));
+            }
+        }
+
+        if ($options) {
+            $this->assertSuccess($connection->alterSettings($name, $options));
+        }
+    }
+
+    /**
+     * Make room in the settings for the flag Scout marks a trashed model with.
+     *
+     * @param array $settings
+     *
+     * @return array
+     */
+    public function configureSoftDeleteFilter(array $settings = [])
+    {
+        $schema = $this->normalizeSchema($settings);
+        $columns = is_array($schema['columns']) ? $schema['columns'] : [];
+
+        if (!isset($columns['__soft_deleted'])) {
+            // an int rather than a bool: Scout filters by 0 and 1
+            $columns['__soft_deleted'] = 'int';
+        }
+
+        return ['columns' => $columns, 'options' => $schema['options']];
+    }
+
     // +++ READ +++ //
 
     /**
@@ -357,7 +453,11 @@ class ManticoreEngine extends Engine
         $options = $builder->options;
         $query = $this->connection()->table($builder->index ?: $builder->model->searchableAs());
 
-        $this->applyMatch($builder, $query, $options);
+        $this->applyVectorSearch($builder, $query, $options, $params);
+        if (!$builder->semanticSearch) {
+            // a semantic search is the vector alone; a hybrid one is the vector and the words
+            $this->applyMatch($builder, $query, $options);
+        }
         $this->applyWheres($builder, $query);
         $this->applyOrders($builder, $query);
         $this->applyLimit($query, $params);
@@ -411,6 +511,113 @@ class ManticoreEngine extends Engine
     }
 
     /**
+     * The vector part of a semantic() or hybrid() search: WHERE knn(<column>, <k>, ...).
+     *
+     * The phrase of a search is a phrase, and what the server compares are vectors, so something
+     * has to turn one into the other - see embedding() and the semantic section of the config.
+     * Manticore takes knn() and MATCH() in one statement, which is what makes a hybrid search one
+     * query rather than two and a merge of the answers.
+     *
+     * @param \Laravel\Scout\Builder $builder
+     * @param Query $query
+     * @param array $options
+     * @param array $params limit and offset of this call
+     *
+     * @return void
+     */
+    protected function applyVectorSearch(Builder $builder, Query $query, array $options, array $params)
+    {
+        if (!$builder->semanticSearch && empty($builder->hybridSearch)) {
+            return;
+        }
+
+        $config = array_merge((array)$this->config('semantic', []), (array)($options['semantic'] ?? []));
+        $column = (string)($config['column'] ?? 'embedding');
+
+        $neighbours = (int)($config['k'] ?? 0);
+        if ($neighbours < 1) {
+            // as deep as the page reaches: the server looks no further than the neighbours it was
+            // asked for, and a where() of the query cuts into them afterwards
+            $neighbours = max(1, (int)($params['offset'] ?? 0) + (int)($params['limit'] ?? 0));
+        }
+
+        $query->whereKnn($column, $neighbours, $this->embedding($builder, $config));
+
+        // knn_dist() is a distance - 0 is the vector itself - while Scout speaks of similarity,
+        // so a cosine index turns into the 0 to 1 of minimumSimilarity by 1 - dist
+        $similarity = '(1 - knn_dist())';
+
+        if ($builder->minimumSimilarity !== null || !empty($builder->hybridSearch)) {
+            $query->select('*')->selectRaw($similarity . ' as ' . self::SIMILARITY_COLUMN);
+        }
+
+        if ($builder->minimumSimilarity !== null) {
+            $query->where(self::SIMILARITY_COLUMN, '>=', (float)$builder->minimumSimilarity);
+        }
+
+        if (!empty($builder->hybridSearch)) {
+            $query->selectRaw(
+                '(' . $this->number($builder->hybridSearch['text_weight'] ?? 1) . ' * weight() + '
+                . $this->number($builder->hybridSearch['semantic_weight'] ?? 1) . ' * ' . $similarity
+                . ') as ' . self::HYBRID_COLUMN
+            );
+        }
+    }
+
+    /**
+     * The phrase of the search as a vector.
+     *
+     * @param \Laravel\Scout\Builder $builder
+     * @param array $config the semantic section, with what the query overrode in it
+     *
+     * @return array
+     */
+    protected function embedding(Builder $builder, array $config): array
+    {
+        $embedder = $config['embedder'] ?? null;
+        if (is_string($embedder) && !is_callable($embedder) && function_exists('app')) {
+            // the name of an invokable class, built by the container
+            $embedder = app($embedder);
+        }
+
+        if (!is_callable($embedder)) {
+            throw new \LogicException(
+                'A semantic search compares vectors, and there is nothing here to turn the phrase into '
+                . 'one. Put a callable - or the name of an invokable class - into '
+                . 'scout.manticore.semantic.embedder, or into the "semantic" option of the query.'
+            );
+        }
+
+        $vector = $embedder((string)$builder->query, $builder->model);
+        if ($vector instanceof \Illuminate\Contracts\Support\Arrayable) {
+            $vector = $vector->toArray();
+        }
+
+        if (!is_array($vector) || !$vector) {
+            throw new \LogicException(
+                'The embedder of scout.manticore.semantic answered with ' . gettype($vector)
+                . ' where a vector of numbers was expected.'
+            );
+        }
+
+        return array_values($vector);
+    }
+
+    /**
+     * A number as it goes into an expression, whatever the locale of the application is.
+     *
+     * @param mixed $value
+     *
+     * @return string
+     */
+    protected function number($value): string
+    {
+        $number = rtrim(rtrim(sprintf('%.6F', (float)$value), '0'), '.');
+
+        return $number === '' || $number === '-' ? '0' : $number;
+    }
+
+    /**
      * The where(), whereIn() and whereNotIn() constraints of the Scout builder.
      *
      * @param \Laravel\Scout\Builder $builder
@@ -446,6 +653,11 @@ class ManticoreEngine extends Engine
         foreach ($builder->orders as $order) {
             $query->orderBy($order['column'], $order['direction']);
         }
+
+        if (!$builder->orders && !empty($builder->hybridSearch)) {
+            // the column applyVectorSearch() added: the server ranks by the words alone otherwise
+            $query->orderBy(self::HYBRID_COLUMN, 'desc');
+        }
     }
 
     /**
@@ -472,8 +684,12 @@ class ManticoreEngine extends Engine
         }
 
         $maxMatches = (int)$this->config('max_matches', 0);
+        // the depth the query has unless it is raised: the value of the config, or the default of
+        // the server when there is none. A config lower than the default is a deliberate one, and
+        // the page has to fit into it just the same
+        $depth = $maxMatches > 0 ? $maxMatches : self::SERVER_MAX_MATCHES;
         $needed = $offset + $limit;
-        if ($needed > max($maxMatches, self::SERVER_MAX_MATCHES)) {
+        if ($needed > $depth) {
             $maxMatches = $needed;
         }
 
@@ -705,11 +921,25 @@ class ManticoreEngine extends Engine
      */
     protected function documentId($model): int
     {
-        $key = $model->getScoutKey();
+        return $this->assertDocumentId($model->getScoutKey(), get_class($model));
+    }
 
+    /**
+     * The key as a document id, or an error naming the model it belongs to.
+     *
+     * A removal goes through here as well as a write: a key silently dropped here would leave the
+     * row of a deleted model in the index, and nobody would hear of it.
+     *
+     * @param mixed $key
+     * @param string $class
+     *
+     * @return int
+     */
+    protected function assertDocumentId($key, string $class): int
+    {
         if (!$this->isDocumentId($key)) {
             throw new \LogicException(
-                'The scout key of ' . get_class($model) . ' is "' . (is_scalar($key) ? $key : gettype($key))
+                'The scout key of ' . $class . ' is "' . (is_scalar($key) ? $key : gettype($key))
                 . '", and a document id of Manticore is a positive integer. Give the model an integer '
                 . 'key, or override getScoutKey() to answer with one.'
             );
@@ -751,7 +981,12 @@ class ManticoreEngine extends Engine
     }
 
     /**
-     * Rows of one REPLACE have to name the same columns, so they are grouped by that.
+     * Rows of one REPLACE have to name the same columns, so they are grouped by that - and then
+     * cut into statements of batch_size rows.
+     *
+     * The chunk of "php artisan scout:import" is 500 models by default, and a statement carrying
+     * that many rows of text runs into max_packet_size of the server (8M), which answers with a
+     * lost connection rather than with an error naming the reason.
      *
      * @param array $rows
      *
@@ -759,12 +994,22 @@ class ManticoreEngine extends Engine
      */
     protected function batches(array $rows): array
     {
-        $batches = [];
+        $size = (int)$this->config('batch_size', self::BATCH_SIZE);
+
+        $groups = [];
         foreach ($rows as $row) {
-            $batches[implode(',', array_keys($row))][] = $row;
+            $groups[implode(',', array_keys($row))][] = $row;
         }
 
-        return array_values($batches);
+        $batches = [];
+        foreach ($groups as $group) {
+            // a size of zero or less is "as many as there are", i.e. the limit turned off
+            foreach (($size > 0 ? array_chunk($group, $size) : [$group]) as $batch) {
+                $batches[] = $batch;
+            }
+        }
+
+        return $batches;
     }
 
     /**
@@ -777,8 +1022,22 @@ class ManticoreEngine extends Engine
     protected function schemaOf(string $name): array
     {
         $schemas = (array)$this->config('schemas', []);
-        $schema = $schemas[$name] ?? [];
+        // the commands of Scout hand over the name of the table, prefix and all, while a schema
+        // is written down under the name of the index
+        $schema = $schemas[$name] ?? $schemas[$this->withoutPrefix($name)] ?? [];
 
+        return $this->normalizeSchema($schema);
+    }
+
+    /**
+     * A schema as the two keys the driver reads it by, whichever way it was written down.
+     *
+     * @param mixed $schema
+     *
+     * @return array
+     */
+    protected function normalizeSchema($schema): array
+    {
         if (is_array($schema) && (isset($schema['columns']) || isset($schema['options']))) {
             return [
                 'columns' => $schema['columns'] ?? null,
@@ -788,6 +1047,20 @@ class ManticoreEngine extends Engine
 
         // a bare list of columns, a callable taking a SchemaTable, or a SchemaTable itself
         return ['columns' => $schema ?: null, 'options' => []];
+    }
+
+    /**
+     * The name of the table without the prefix of Scout in front of it.
+     *
+     * @param string $name
+     *
+     * @return string
+     */
+    protected function withoutPrefix(string $name): string
+    {
+        $prefix = (string)config('scout.prefix');
+
+        return ($prefix !== '' && strpos($name, $prefix) === 0) ? substr($name, strlen($prefix)) : $name;
     }
 
     /**
@@ -910,7 +1183,7 @@ class ManticoreEngine extends Engine
             return null;
         }
 
-        if (preg_match('/unknown column:?\s*[\'"]?([\w.-]+)/i', (string)$result->error(), $m)) {
+        if (preg_match('/unknown column:?\s*[\'"]?([\w.-]+)/i', $this->serverError($result), $m)) {
             return $m[1];
         }
 
@@ -935,8 +1208,31 @@ class ManticoreEngine extends Engine
         // "TRUNCATE RTINDEX requires an existing RT table" of TRUNCATE
         return (bool)preg_match(
             '/(absent|no such table|unknown (local )?table|requires an existing)/i',
-            (string)$result->error()
+            $this->serverError($result)
         );
+    }
+
+    /**
+     * What the server answered, without the statement it was given.
+     *
+     * A client that reports an error the way the one of the query builder writes it - "SQL: SELECT
+     * ...\nError [1064] ..." - puts the statement in front of the answer, and the statement carries
+     * the phrase a user typed. Read as a whole, a search for "no such table" would look like a
+     * missing index and come back empty instead of raising whatever really went wrong.
+     *
+     * @param ResultSet $result
+     *
+     * @return string
+     */
+    protected function serverError(ResultSet $result): string
+    {
+        $error = (string)$result->error();
+
+        if (preg_match('/(?:^|\n)Error \[[^]]*]\s*(.*)$/s', $error, $m)) {
+            return $m[1];
+        }
+
+        return $error;
     }
 
     /**
@@ -946,10 +1242,23 @@ class ManticoreEngine extends Engine
      */
     protected function emptyResult(): ResultSet
     {
+        return $this->resultSet([]);
+    }
+
+    /**
+     * A ResultSet of the given rows - the one place that knows how one is put together.
+     *
+     * @param array $rows
+     * @param array $meta
+     *
+     * @return ResultSet
+     */
+    protected function resultSet(array $rows, array $meta = []): ResultSet
+    {
         return new ResultSet([
             'command' => 'SELECT',
-            'meta'    => ['total' => 0, 'total_found' => 0],
-            'result'  => ['type' => 'array', 'data' => []],
+            'meta'    => $meta + ['total' => count($rows), 'total_found' => count($rows)],
+            'result'  => ['type' => 'array', 'data' => $rows],
         ]);
     }
 
