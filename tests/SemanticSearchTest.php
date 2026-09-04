@@ -38,7 +38,7 @@ class SemanticSearchTest extends TestCase
     {
         parent::setUp();
 
-        $this->requiresServer();
+        $this->requiresVectorSearch();
 
         VectorPost::$searchableAs = $this->indexName('vectors');
     }

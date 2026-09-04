@@ -26,11 +26,23 @@ abstract class TestCase extends BaseTestCase
     protected const CONNECTION = 'testing';
 
     /**
+     * The version of ManticoreSearch a vector column and knn() need
+     */
+    protected const VECTOR_SEARCH_SINCE = '6.3';
+
+    /**
      * Cached result of the server availability check
      *
      * @var bool|null
      */
     private static $serverAvailable;
+
+    /**
+     * Cached version of the server
+     *
+     * @var string|null
+     */
+    private static $serverVersion;
 
     /**
      * Names of the Manticore tables to drop after the test
@@ -179,6 +191,42 @@ abstract class TestCase extends BaseTestCase
                 'No ManticoreSearch server at %s:%d (set MANTICORE_TEST_HOST/MANTICORE_TEST_PORT to change it).',
                 $this->serverHost(),
                 $this->serverPort()
+            ));
+        }
+    }
+
+    /**
+     * The version the server names itself by
+     *
+     * @return string
+     */
+    protected function serverVersion(): string
+    {
+        if (null === self::$serverVersion) {
+            // "28.6.6 e5feb9932@26073104 (columnar 13.8.3 ...)" - the version is what it starts with
+            $rows = ManticoreDb::connection(static::CONNECTION)->select("SHOW STATUS LIKE 'version'");
+            $value = (string)($rows[0]['Value'] ?? '');
+
+            self::$serverVersion = preg_match('/^\d+(\.\d+)*/', $value, $m) ? $m[0] : '0';
+        }
+
+        return self::$serverVersion;
+    }
+
+    /**
+     * Skip the test when the server is older than the vector search of Manticore.
+     *
+     * @return void
+     */
+    protected function requiresVectorSearch(): void
+    {
+        $this->requiresServer();
+
+        if (version_compare($this->serverVersion(), static::VECTOR_SEARCH_SINCE, '<')) {
+            $this->markTestSkipped(sprintf(
+                'A float_vector column and knn() are of ManticoreSearch %s and above, and the server is %s.',
+                static::VECTOR_SEARCH_SINCE,
+                $this->serverVersion()
             ));
         }
     }

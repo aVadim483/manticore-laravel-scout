@@ -13,8 +13,13 @@ jobs:
   # The matrix runs the floor of the range (Laravel 11 on PHP 8.2), each major above it, and the
   # newest PHP the framework allows (8.5), so both ends of what composer.json promises are checked
   # rather than assumed.
+  #
+  # The last two jobs are about the other end of the driver: the server. What Manticore answers
+  # with differs between its versions - the column of SHOW TABLES, the wording of a missing table,
+  # whether a write to a table that is not there creates one - and the two older images say
+  # whether the range this package claims is a range it has run on.
   tests:
-    name: tests / PHP ${{ matrix.php }}, Laravel ${{ matrix.laravel }}
+    name: tests / PHP ${{ matrix.php }}, Laravel ${{ matrix.laravel }}, Manticore ${{ matrix.manticore }}
     runs-on: ubuntu-latest
 
     strategy:
@@ -24,20 +29,33 @@ jobs:
           - php: '8.2'
             laravel: '11'
             testbench: '^9.0'
+            manticore: 'latest'
             eol: true
           - php: '8.3'
             laravel: '12'
             testbench: '^10.0'
+            manticore: 'latest'
           - php: '8.4'
             laravel: '13'
             testbench: '^11.0'
+            manticore: 'latest'
           - php: '8.5'
             laravel: '13'
             testbench: '^11.0'
+            manticore: 'latest'
+          # the oldest image the registry still carries, and one in the middle of the way here
+          - php: '8.4'
+            laravel: '13'
+            testbench: '^11.0'
+            manticore: '7.0.0'
+          - php: '8.4'
+            laravel: '13'
+            testbench: '^11.0'
+            manticore: '13.11.1'
 
     services:
       manticore:
-        image: manticoresearch/manticore:latest
+        image: manticoresearch/manticore:${{ matrix.manticore }}
         ports:
           # the port the tests expect by default, see MANTICORE_TEST_HOST/MANTICORE_TEST_PORT
           # in phpunit.xml.dist
