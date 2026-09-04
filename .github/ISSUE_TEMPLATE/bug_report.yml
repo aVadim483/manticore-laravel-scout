@@ -1,0 +1,52 @@
+name: Bug report
+description: A search that answers with the wrong rows, a write that does not land, an error out of the driver
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A search that answers with the wrong rows is as much a bug as one that raises: what this
+        package does is translate between two APIs, and the wrong translation is the defect.
+
+  - type: textarea
+    id: what-happens
+    attributes:
+      label: What happens
+      description: What you asked for and what came back, with the error if there is one.
+      placeholder: |
+        Post::search('iPhone -Pro')->where('author_id', 7)->get() answers with nothing,
+        while the index has four rows matching it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: statement
+    attributes:
+      label: The statement and the answer of the server
+      description: |
+        The query builder logs both when MANTICORE_LOG_CHANNEL names a channel of the application.
+        A statement run by hand against the same index - and what it answered - is just as good.
+      render: sql
+
+  - type: textarea
+    id: model
+    attributes:
+      label: The model and the schema of its index
+      description: "toSearchableArray(), a manticoreSchema() if the model has one, and SHOW CREATE TABLE of the index."
+      render: php
+
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: PHP, Laravel, Laravel Scout, ManticoreSearch, and this package.
+      placeholder: "PHP 8.3, Laravel 12.20, Scout 11.2, Manticore 9.4.6, avadim/manticore-laravel-scout 3.0.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: config
+    attributes:
+      label: The manticore section of config/scout.php
+      description: Without the credentials of the connection.
+      render: php

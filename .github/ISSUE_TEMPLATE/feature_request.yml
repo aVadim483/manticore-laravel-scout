@@ -1,0 +1,32 @@
+name: Feature request
+description: Something Manticore does that a search of Scout cannot reach here
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Anything the driver does not cover is reachable through the callback of `search()`, which is
+        handed the query of the builder itself. What belongs here is what should not need that.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What you want to do
+      description: The search you would like to write, and what it should answer with.
+      placeholder: |
+        Post::search('apple')->facets(['author_id'])->get(), with the counts alongside the models.
+    validations:
+      required: true
+
+  - type: textarea
+    id: manticore
+    attributes:
+      label: What it looks like in Manticore
+      description: The statement, or the part of the documentation it comes from.
+      render: sql
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: How you do it now
+      description: Through the callback of search(), through the facade, or not at all.

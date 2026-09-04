@@ -90,3 +90,44 @@ jobs:
 
       - name: Run the tests
         run: vendor/bin/phpunit
+
+  # The static analysis and the style, on the floor of the range - what passes there passes above
+  # it as well, and neither of the two needs a server.
+  analysis:
+    name: static analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo, pdo_mysql, mbstring, json
+          coverage: none
+
+      - name: Install the dependencies
+        run: composer update --prefer-dist --no-progress --no-interaction
+
+      - name: Analyse the sources
+        run: vendor/bin/phpstan analyse --no-progress
+
+  style:
+    name: style
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      # the fixer is a tool of the job rather than a dependency of the package: its own
+      # requirements would hold back the Symfony the framework of a test brings with it
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+          tools: php-cs-fixer
+
+      - name: Check the style of the sources
+        run: php-cs-fixer fix --dry-run --diff --show-progress=none

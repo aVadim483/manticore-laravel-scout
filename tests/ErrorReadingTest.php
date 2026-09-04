@@ -21,7 +21,7 @@ class ErrorReadingTest extends TestCase
      */
     protected function reader(): ManticoreEngine
     {
-        return new class($this->app->make(Manager::class), (array)config('scout.manticore'), false) extends ManticoreEngine {
+        return new class ($this->app->make(Manager::class), (array)config('scout.manticore'), false) extends ManticoreEngine {
             /**
              * @param ResultSet $result
              *

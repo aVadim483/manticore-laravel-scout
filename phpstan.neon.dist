@@ -1,0 +1,13 @@
+parameters:
+    level: 5
+    paths:
+        - src
+
+    ignoreErrors:
+        # The models the engine is handed are the searchable ones of Scout, and what it calls on
+        # them is of the Searchable trait - which has no interface behind it to type a parameter
+        # by, so the analyser knows nothing of those methods. Everything else called on a model is
+        # still checked.
+        -
+            identifier: method.notFound
+            message: '#Call to an undefined method [^:]*(Model|HigherOrderCollectionProxy)[^:]*::(toSearchableArray|scoutMetadata|withScoutMetadata|indexableAs|searchableAs|getScoutKey|getScoutKeyName|getScoutModelsByIds|queryScoutModelsByIds|pushSoftDeleteMetadata|newCollection)\(\)#'

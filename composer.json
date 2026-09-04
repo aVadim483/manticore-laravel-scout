@@ -14,6 +14,18 @@
     ],
     "type": "library",
     "homepage": "https://github.com/aVadim483/manticore-laravel-scout",
+    "authors": [
+        {
+            "name": "aVadim",
+            "homepage": "https://github.com/aVadim483",
+            "role": "Developer"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/aVadim483/manticore-laravel-scout/issues",
+        "source": "https://github.com/aVadim483/manticore-laravel-scout",
+        "docs": "https://github.com/aVadim483/manticore-laravel-scout#readme"
+    },
     "require": {
         "php": "^8.2",
         "ext-json": "*",
@@ -25,7 +37,8 @@
     },
     "require-dev": {
         "orchestra/testbench": "^9.0|^10.0|^11.0",
-        "phpunit/phpunit": "^10.5|^11.0|^12.0|^13.0"
+        "phpunit/phpunit": "^10.5|^11.0|^12.0|^13.0",
+        "phpstan/phpstan": "^2.0"
     },
     "license": "MIT",
     "autoload": {
@@ -39,7 +52,14 @@
         }
     },
     "scripts": {
-        "test": "phpunit"
+        "test": "phpunit",
+        "analyse": "phpstan analyse",
+        "style": "php-cs-fixer fix --dry-run --diff"
+    },
+    "scripts-descriptions": {
+        "test": "Run the test suite (a ManticoreSearch at 127.0.0.1:9306 for most of it)",
+        "analyse": "Run the static analysis of src",
+        "style": "Check the sources against the style of the package (php-cs-fixer is not a dependency, see CONTRIBUTING.md)"
     },
     "extra": {
         "laravel": {

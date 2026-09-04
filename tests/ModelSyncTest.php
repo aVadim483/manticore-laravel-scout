@@ -97,7 +97,7 @@ class ModelSyncTest extends TestCase
             return $this->makePost(['title' => 'manticore batch ' . $n, 'author_id' => $n]);
         });
 
-        $engine = new class(
+        $engine = new class (
             $this->app->make(Manager::class),
             array_merge((array)config('scout.manticore'), ['batch_size' => 2]),
             false
@@ -133,7 +133,7 @@ class ModelSyncTest extends TestCase
     {
         $post = $this->makePost(['title' => 'manticore keyed']);
 
-        $stranger = new class extends Post {
+        $stranger = new class () extends Post {
             /**
              * @return mixed
              */

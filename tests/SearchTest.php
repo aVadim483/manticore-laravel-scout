@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace avadim\Manticore\Scout\Tests;
 
 use avadim\Manticore\QueryBuilder\Query;
+use avadim\Manticore\QueryBuilder\ResultSet;
 use avadim\Manticore\Scout\Tests\Support\Post;
+use Laravel\Scout\EngineManager;
 
 /**
  * What a search answers, against a live server.
@@ -154,6 +156,20 @@ class SearchTest extends TestCase
 
         $this->assertCount(0, Post::search('manticore')->get());
         $this->assertSame(0, Post::search('manticore')->paginate(10)->total());
+    }
+
+    public function testTheMetaOfTheLastSearchIsReachableThroughTheEngine(): void
+    {
+        $this->makePost(['title' => 'manticore meta']);
+
+        $engine = $this->app->make(EngineManager::class)->engine('manticore');
+        Post::search('manticore')->get();
+
+        // whatever the engine does not know of goes to the connection of the query builder
+        $result = $engine->lastResultSet();
+
+        $this->assertInstanceOf(ResultSet::class, $result);
+        $this->assertSame(1, $result->total());
     }
 
     public function testCursorWalksTheResultsOneByOne(): void

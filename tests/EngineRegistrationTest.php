@@ -45,6 +45,13 @@ class EngineRegistrationTest extends TestCase
         $this->assertSame(static::CONNECTION, config('scout.manticore.connection'));
     }
 
+    public function testScoutIsNotBuiltUntilSomethingAsksForIt(): void
+    {
+        // the driver adds itself to the engines of Scout as the manager of them is built, rather
+        // than by building one on every request of an application that may never search
+        $this->assertFalse($this->app->resolved(EngineManager::class));
+    }
+
     public function testTheEngineDoesNotOpenAConnectionUntilItIsAsked(): void
     {
         // a connection opens a PDO socket in its constructor, so an application whose Manticore

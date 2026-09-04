@@ -6,3 +6,5 @@
 /.phpunit.cache/
 /phpunit.xml
 /.php_cs.cache
+/.php-cs-fixer.cache
+/.phpstan.cache

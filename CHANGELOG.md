@@ -62,6 +62,34 @@ All notable changes to this project are documented here. The format is based on
   on GitHub, not from `vendor/`. Line endings are pinned to LF as well, so that a file does not
   depend on the machine it was committed from.
 
+* Static analysis and style are checked by the CI as well: `phpstan` at level 5 over `src`, and
+  `php-cs-fixer` against `.php-cs-fixer.dist.php` — PSR-12 with the habits of these sources kept,
+  `else` and `catch` opening a line of their own. `composer analyse` and `composer style` run the
+  two locally. The fixer is a tool of the job rather than a dependency of the package: its own
+  requirements would hold back the Symfony that the framework of a test brings with it.
+
+* `CONTRIBUTING.md`, `SECURITY.md` and the issue templates: what makes a report of a wrong answer
+  actionable, how to run the suite against a server of your own, and where a vulnerability goes
+  instead of into a public issue.
+
+### Changed
+
+* **The driver is added to the engines of Scout as the manager of them is built**, rather than by
+  building one in `boot()`. An application that never searches no longer builds the engine manager
+  of Scout on every request — and one that had built it before this provider booted is still
+  extended, which is what the two branches are for.
+
+* The sources are written for the PHP 8.2 the package now requires: the properties of the engine
+  carry their types instead of a `@var` line, and `str_starts_with()` stands where a `strpos()`
+  compared against zero.
+
+* `composer.json` names its author and where an issue or the sources are, which is what Packagist
+  shows on the page of the package.
+
+* The readme says what the engine does with a call it does not know: it hands it to the connection
+  of the query builder, which is how the transactions, `tableDescribe()` and the meta of the search
+  that has just run — `lastResultSet()->facets()` — are reached through it.
+
 ### Fixed
 
 * A published config is read at last. It went to `config/manticore-scout.php`, which Laravel loads

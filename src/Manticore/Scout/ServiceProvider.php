@@ -47,11 +47,35 @@ class ServiceProvider extends BaseServiceProvider
             $this->publishes([$this->configSource() => config_path('scout.manticore.php')], 'config');
         }
 
-        $this->app->make(EngineManager::class)->extend('manticore', function ($app) {
+        // the driver is added to the engines of Scout as the manager of them is built, so that
+        // an application that never searches does not build one at all - and to the one that is
+        // there already, when something asked for it before this provider booted
+        if ($this->app->resolved(EngineManager::class)) {
+            $this->registerEngine($this->app->make(EngineManager::class));
+        }
+        else {
+            $this->app->resolving(EngineManager::class, function (EngineManager $manager) {
+                $this->registerEngine($manager);
+            });
+        }
+    }
+
+    /**
+     * Add the driver to the engines of Scout, under the name it is asked for by.
+     *
+     * @param \Laravel\Scout\EngineManager $manager
+     *
+     * @return void
+     */
+    protected function registerEngine(EngineManager $manager): void
+    {
+        $manager->extend('manticore', function ($app) {
+            $config = $app->make('config');
+
             return new ManticoreEngine(
                 $app->make(Manager::class),
-                (array)$app['config']->get('scout.manticore', []),
-                (bool)$app['config']->get('scout.soft_delete', false)
+                (array)$config->get('scout.manticore', []),
+                (bool)$config->get('scout.soft_delete', false)
             );
         });
     }
@@ -72,7 +96,7 @@ class ServiceProvider extends BaseServiceProvider
      */
     protected function defaultIndexSettings(): void
     {
-        $config = $this->app['config'];
+        $config = $this->app->make('config');
 
         if ($config->get('scout.manticore.index-settings')) {
             return;

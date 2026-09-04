@@ -295,6 +295,24 @@ Post::search('manticore', function (Query $query, string $phrase) {
 
 Верните запрос — драйвер его выполнит, либо выполните сами и верните `ResultSet`.
 
+Всё, чего движок не знает, он передаёт соединению билдера — а там живут транзакции, `DESCRIBE` и
+ответ на последний выполненный запрос:
+
+```php
+use Laravel\Scout\EngineManager;
+
+$engine = app(EngineManager::class)->engine('manticore');
+
+$engine->transaction(function () { /* ... */ });
+$engine->tableDescribe('posts');
+
+Post::search('manticore')->get();
+$engine->lastResultSet()->facets();   // мета только что выполненного поиска
+```
+
+`$engine->connection()` — то же самое соединение, полученное явно, а не через проброс; и
+`\ManticoreDb::connection()` из пакета-билдера отдаёт его же.
+
 ## Семантический и гибридный поиск
 
 Manticore ищет не только по словам, но и по векторам, причём принимает то и другое в одном

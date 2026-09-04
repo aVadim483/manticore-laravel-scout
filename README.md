@@ -298,6 +298,24 @@ Post::search('manticore', function (Query $query, string $phrase) {
 
 Return the query and the driver runs it, or run it yourself and return the `ResultSet`.
 
+The engine itself hands anything it does not know of to the connection of the query builder, which
+is where the transactions, the `DESCRIBE` and the answer of the last statement live:
+
+```php
+use Laravel\Scout\EngineManager;
+
+$engine = app(EngineManager::class)->engine('manticore');
+
+$engine->transaction(function () { /* ... */ });
+$engine->tableDescribe('posts');
+
+Post::search('manticore')->get();
+$engine->lastResultSet()->facets();   // the meta of the search that has just run
+```
+
+`$engine->connection()` is the same connection, asked for by name rather than through the
+forwarding - and `\ManticoreDb::connection()` of the query builder package answers with it too.
+
 ## Semantic and hybrid search
 
 Manticore searches by vectors as well as by words, and takes both in one statement - which is what

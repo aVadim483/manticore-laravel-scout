@@ -10,8 +10,8 @@ use avadim\Manticore\QueryBuilder\Builder as ManticoreDb;
 use avadim\Manticore\Scout\ManticoreEngine;
 use avadim\Manticore\Scout\ServiceProvider as ScoutManticoreServiceProvider;
 use avadim\Manticore\Scout\Tests\Support\Post;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
 use Laravel\Scout\ScoutServiceProvider;
 use Orchestra\Testbench\TestCase as BaseTestCase;
 

@@ -33,53 +33,47 @@ class ManticoreEngine extends Engine implements UpdatesIndexSettings, SupportsSe
     /**
      * Keys of Builder::options() the driver reads itself; the rest becomes the OPTION clause
      */
-    const RESERVED_OPTIONS = ['fields', 'escape', 'highlight', 'semantic'];
+    public const RESERVED_OPTIONS = ['fields', 'escape', 'highlight', 'semantic'];
 
     /**
      * The number of rows Manticore keeps per query unless told otherwise
      */
-    const SERVER_MAX_MATCHES = 1000;
+    public const SERVER_MAX_MATCHES = 1000;
 
     /**
      * Rows of one REPLACE, unless batch_size of the config says otherwise
      */
-    const BATCH_SIZE = 100;
+    public const BATCH_SIZE = 100;
 
     /**
      * The column a vector search adds: the distance of the server as a similarity of 0 to 1
      */
-    const SIMILARITY_COLUMN = '_similarity';
+    public const SIMILARITY_COLUMN = '_similarity';
 
     /**
      * The column a hybrid search ranks by: the weights of Scout over the two scores
      */
-    const HYBRID_COLUMN = '_hybrid_score';
+    public const HYBRID_COLUMN = '_hybrid_score';
 
     /**
-     * @var \avadim\Manticore\Laravel\Manager
+     * The pool of connections of the query builder package
      */
-    protected $manager;
+    protected Manager $manager;
 
     /**
      * The "manticore" section of config/scout.php
-     *
-     * @var array
      */
-    protected $config;
+    protected array $config;
 
     /**
      * Whether Scout keeps soft deleted models in the index
-     *
-     * @var bool
      */
-    protected $softDelete;
+    protected bool $softDelete;
 
     /**
      * Indexes known to be there, so that a write asks the server about them once
-     *
-     * @var array
      */
-    protected $knownIndexes = [];
+    protected array $knownIndexes = [];
 
     /**
      * @param \avadim\Manticore\Laravel\Manager $manager
@@ -222,8 +216,8 @@ class ManticoreEngine extends Engine implements UpdatesIndexSettings, SupportsSe
 
         $class = get_class($model);
         $ids = $keys->map(function ($key) use ($class) {
-                return $this->assertDocumentId($key, $class);
-            })
+            return $this->assertDocumentId($key, $class);
+        })
             ->values()
             ->all();
 
@@ -575,7 +569,7 @@ class ManticoreEngine extends Engine implements UpdatesIndexSettings, SupportsSe
     protected function embedding(Builder $builder, array $config): array
     {
         $embedder = $config['embedder'] ?? null;
-        if (is_string($embedder) && !is_callable($embedder) && function_exists('app')) {
+        if (is_string($embedder) && !is_callable($embedder)) {
             // the name of an invokable class, built by the container
             $embedder = app($embedder);
         }
@@ -801,6 +795,10 @@ class ManticoreEngine extends Engine implements UpdatesIndexSettings, SupportsSe
     /**
      * The same as map(), row by row.
      *
+     * Lazy as far as the rows of the database go - the order of the search is not the order of a
+     * query, so the models are sorted here, and sorting a LazyCollection walks all of it. The
+     * engines of Scout do it the same way.
+     *
      * @param \Laravel\Scout\Builder $builder
      * @param mixed $results
      * @param \Illuminate\Database\Eloquent\Model $model
@@ -904,7 +902,7 @@ class ManticoreEngine extends Engine implements UpdatesIndexSettings, SupportsSe
     protected function withMetadata($model, $hit)
     {
         foreach ((array)$hit as $key => $value) {
-            if (is_string($key) && strpos($key, '_') === 0) {
+            if (is_string($key) && str_starts_with($key, '_')) {
                 $model->withScoutMetadata($key, $value);
             }
         }
@@ -1060,7 +1058,7 @@ class ManticoreEngine extends Engine implements UpdatesIndexSettings, SupportsSe
     {
         $prefix = (string)config('scout.prefix');
 
-        return ($prefix !== '' && strpos($name, $prefix) === 0) ? substr($name, strlen($prefix)) : $name;
+        return ($prefix !== '' && str_starts_with($name, $prefix)) ? substr($name, strlen($prefix)) : $name;
     }
 
     /**
@@ -1272,7 +1270,7 @@ class ManticoreEngine extends Engine implements UpdatesIndexSettings, SupportsSe
      */
     protected function config(string $key, $default = null)
     {
-        return isset($this->config[$key]) ? $this->config[$key] : $default;
+        return $this->config[$key] ?? $default;
     }
 
     /**
